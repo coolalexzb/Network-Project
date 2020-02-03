@@ -1,0 +1,12 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/Users/zhengbo/Documents/556/comp556/Pro1/client_num.c
+
+/Users/zhengbo/Documents/556/comp556/Pro1/name_addr.c
+
