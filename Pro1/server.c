@@ -1,5 +1,5 @@
 //
-// Created by 郑博 on 2/4/20.
+// Created by 郑博 on 2/5/20.
 //
 
 #include <errno.h>
@@ -12,23 +12,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#include <dirent.h>
 
 /**************************************************/
 /* a few simple linked list functions             */
 /**************************************************/
 
-const char* HTTP_HEADER_200 = "HTTP/1.1 200 OK \r\n";
-const char* HTTP_HEADER_400 = "HTTP/1.1 400 Bad Request \r\n";
-const char* HTTP_HEADER_404 = "HTTP/1.1 404 Not Found \r\n";
-const char* HTTP_HEADER_500 = "HTTP/1.1 500 Internal Server Error \r\n";
-const char* HTTP_HEADER_501 = "HTTP/1.1 501 Not Implemented \r\n";
-const char* CONTENT_TEXT_END = "Content-Type: text/html\r\n\r\n";
-
-/* a buffer to read data */
-char *buf;
-int BUF_LEN = 1000;
-char* HeaderResp[] = {"HTTP/1.1 200 OK \r\n", "HTTP/1.1 400 Bad Request \r\n", "HTTP/1.1 404 Not Found \r\n", "HTTP/1.1 500 Internal Server Error \r\n", "HTTP/1.1 501 Not Implemented \r\n", "Content-Type: text/html\r\n\r\n"};
 
 /* A linked list node data structure to maintain application
    information related to a connected socket */
@@ -39,7 +27,6 @@ struct node {
     /* you will need to introduce some variables here to record
        all the information regarding this socket.
        e.g. what data needs to be sent next */
-    char* buffer;
     struct node *next;
 };
 
@@ -52,9 +39,10 @@ void dump(struct node *head, int socket) {
 
     while (current->next) {
         if (current->next->socket == socket) {
+            /* remove */
             temp = current->next;
             current->next = temp->next;
-            free(temp);
+            free(temp); /* don't forget to free memory */
             return;
         } else {
             current = current->next;
@@ -74,65 +62,7 @@ void add(struct node *head, int socket, struct sockaddr_in addr) {
     head->next = new_node;
 }
 
-int getStatus(const char *path) {
-    if(strstr(path, "../") != NULL) {
-        return 1;
-    }else if(open(path, O_RDONLY) < 0) {
-        return 2;
-    }else if(opendir(path) != NULL) {
-        return 4;
-    }
 
-    return 0;
-}
-
-char* concat(const char *s1, const char *s2) {
-    char *res = malloc(strlen(s1) + strlen(s2) + 1); // 1 for '\0'
-    strcpy(res, s1);
-    strcat(res, s2);
-    return res;
-}
-
-void sendInfo(char* path, struct node *current) {
-    char byte[BUF_LEN + 1];
-    byte[BUF_LEN] = '\0';
-    int file = open(path, O_RDONLY);
-    if (file < 0) {
-        printf("path: %s\n", path);
-        printf("File open failed!\n");
-    }
-    lseek(file, 0, SEEK_SET);
-    ssize_t cnt = read(file, &byte, BUF_LEN);
-
-    int offset = 1;
-    while(cnt > 0) {
-        buf = byte;
-        send(current->socket, buf, strlen(buf) + 1, 0);
-        lseek(file, BUF_LEN * offset, SEEK_SET);
-        memset(byte,'\0',sizeof(byte));
-        cnt = read(file, &byte, BUF_LEN);
-        offset++;
-    }
-    close(file);
-}
-
-char* parse(char* buf, char* root_directory) {
-    char* ele = strtok(buf, " /t/r/n");
-    if (ele != NULL)
-    {
-        ele = strtok(NULL, " ");
-    }
-    char *filename = ele;
-    return strcat(root_directory, filename);
-}
-
-void sendHeader(int index, struct node *current) {
-    char *respHeader = concat(HeaderResp[index], HeaderResp[5]);
-    printf("H: %s", respHeader);
-    send(current->socket, respHeader, strlen(respHeader) + 1, 0);
-    free(respHeader);
-    return;
-}
 /*****************************************/
 /* main program                          */
 /*****************************************/
@@ -147,12 +77,6 @@ int main(int argc, char **argv) {
     /* server socket address variables */
     struct sockaddr_in sin, addr;
     unsigned short server_port = atoi(argv[1]);
-
-
-    char* mode = argv[2];
-    char* root_directory = argv[3];
-    printf("mode %s\n", mode);
-    printf("root_directory %s\n", root_directory);
 
     /* socket address variables for a connected client */
     socklen_t addr_len = sizeof(struct sockaddr_in);
@@ -178,7 +102,9 @@ int main(int argc, char **argv) {
     struct node head;
     struct node *current, *next;
 
-
+    /* a buffer to read data */
+    char *buf;
+    int BUF_LEN = 1000;
 
     buf = (char *)malloc(BUF_LEN);
 
@@ -301,7 +227,7 @@ int main(int argc, char **argv) {
                 add(&head, new_sock, addr);
 
                 /* let's send a message to the client just for fun */
-                count = send(new_sock, message, strlen(message)+1, 0);                // delete!!!
+                count = send(new_sock, message, strlen(message)+1, 0);
                 if (count < 0)
                 {
                     perror("error sending message to client");
@@ -358,51 +284,55 @@ int main(int argc, char **argv) {
                         close(current->socket);
                         dump(&head, current->socket);
                     } else {
-
-                        if(strcmp(mode, "www") == 0) {
-                            printf("buf\n%s\n", buf);
-
-                            char* path = parse(buf, root_directory);
-                            int status = getStatus(path);
-                            printf("path %s\n", path);
-                            //char *respHeader;
-
-                            switch(status){
+                        // data in
+                        /* we got count bytes of data from the client */
+                        /* in general, the amount of data received in a recv()
+                           call may not be a complete application message. it
+                           is important to check the data received against
+                           the message format you expect. if only a part of a
+                           message has been received, you must wait and
+                           receive the rest later when more data is available
+                           to be read */
+                        /* in this case, we expect a message where the first byte
+                                   stores the number of bytes used to encode a number,
+                                   followed by that many bytes holding a numeric value */
+                        if (buf[0]+1 != count) {
+                            /* we got only a part of a message, we won't handle this in
+                               this simple example */
+                            printf("Message incomplete, something is still being transmitted\n");
+                            return 0;
+                        } else {                                                    // 1st byte, read content
+                            switch(buf[0]) {
                                 case 1:
-                                    buf = "400";
-                                    sendHeader(status, current);
-                                    send(current->socket, buf, strlen(buf) + 1, 0);
+                                    /* note the type casting here forces signed extension
+                                       to preserve the signedness of the value */
+                                    /* note also the use of parentheses for pointer
+                                       dereferencing is critical here */
+                                    num = (char) *(char *)(buf+1);
                                     break;
                                 case 2:
-                                    buf = "404";
-                                    sendHeader(status, current);
-                                    send(current->socket, buf, strlen(buf) + 1, 0);
+                                    /* note the type casting here forces signed extension
+                                       to preserve the signedness of the value */
+                                    /* note also the use of parentheses for pointer
+                                       dereferencing is critical here */
+                                    /* note for 16 bit integers, byte ordering matters */
+                                    num = (short) ntohs(*(short *)(buf+1));
                                     break;
                                 case 4:
-                                    buf = "501";
-                                    sendHeader(status, current);
-                                    send(current->socket, buf, strlen(buf) + 1, 0);
+                                    /* note the type casting here forces signed extension
+                                       to preserve the signedness of the value */
+                                    /* note also the use of parentheses for pointer
+                                       dereferencing is critical here */
+                                    /* note for 32 bit integers, byte ordering matters */
+                                    num = (int) ntohl(*(int *)(buf+1));
                                     break;
                                 default:
-                                    sendHeader(status, current);
-                                    sendInfo(path, current);
+                                    break;
                             }
-
-                            close(current->socket);
-                            dump(&head, current->socket);
-                        } else {
-                            //Ping-Pong
-
-                            unsigned short size_t = (unsigned short) ntohs(*(unsigned short *)(buf));
-                            int t1 = (int) ntohl(*(int *)(buf + 2));
-                            int t2 = (int) ntohl(*(int *)(buf + 6));
-                            printf("size:   %d\n", size_t);
-                            printf("t1:   %d\n", t1);
-                            printf("t2:   %d\n", t2);
-                            printf("data:   %s\n", buf + 10);
-                            send(current->socket, buf, size_t, 0);
+                            /* a complete message is received, print it out */
+                            printf("Received the number \"%d\". Client IP address is: %s\n",
+                                   num, inet_ntoa(current->client_addr.sin_addr));
                         }
-
                     }
                 }
             }
