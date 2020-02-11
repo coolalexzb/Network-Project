@@ -338,6 +338,7 @@ int main(int argc, char **argv) {
                     /* we have data from a client */
 
                     count = recv(current->socket, buf, BUF_LEN, 0);
+
                     if (count <= 0) {
                         /* something is wrong */
                         if (count == 0) {
@@ -382,11 +383,21 @@ int main(int argc, char **argv) {
                         } else {
                             //Ping-Pong
                             unsigned short size_t = (unsigned short) ntohs(*(unsigned short *)(buf));
+                            unsigned short curSize = count;
+                            unsigned short offset = count;
+                            unsigned short recLen = 0;
+                            while(curSize != size_t) {
+                                recLen = recv(current->socket, buf + offset, BUF_LEN, 0);
+                                curSize += recLen;
+                                offset += recLen;
+                            }
+
                             int t1 = (int) ntohl(*(int *)(buf + 2));
                             int t2 = (int) ntohl(*(int *)(buf + 6));
                             printf("size:   %d\n", size_t);
                             printf("t1:   %d\n", t1);
                             printf("t2:   %d\n", t2);
+                            printf("data:   %ld\n", strlen(buf + 10));
                             //printf("data:   %s\n", buf + 10);
                             send(current->socket, buf, size_t, 0);
                         }

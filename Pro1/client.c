@@ -107,31 +107,34 @@ int main(int argc, char** argv) {
         printf("Here is what we got: %s", buffer);
     }
 
-    for(int i = 0; i < cnt; i++) {
+    int i = 0;
+    for(i = 0; i < cnt; i++) {
         char data[send_size - 10];
         memset(data, 'a', sizeof(data));
-        printf("Enter the value of the number to send: ");
-        fgets(buffer, size, stdin);
-        num = atol(buffer);
-        if (strncmp(buffer, "bye", 3) == 0) {
-            /* free the resources, generally important! */
-            close(sock);
-            free(buffer);
-            return 0;
-        }
+//        printf("Enter the value of the number to send: ");
+//        fgets(buffer, size, stdin);
+//        num = atol(buffer);
+//        if (strncmp(buffer, "bye", 3) == 0) {
+//            /* free the resources, generally important! */
+//            close(sock);
+//            free(buffer);
+//            return 0;
+//        }
+
+
+        unsigned short sendLen = sizeof(data) + 10;
+        char *sendbuffer;
+        sendbuffer = (char *) malloc(sendLen);
+        memcpy(sendbuffer + 10, data, sizeof(data));
 
         struct timeval start;
         gettimeofday(&start, NULL);
         time_t tv_sec = start.tv_sec;
         suseconds_t tv_usec = start.tv_usec;
-        unsigned short sendLen = sizeof(data) + 10;
-        char *sendbuffer;
-        sendbuffer = (char *) malloc(sendLen);
-
         *(unsigned short *) (sendbuffer) = (unsigned short) htons(sendLen);
         *(int *) (sendbuffer + 2) = (int) htonl((int)tv_sec);
         *(int *) (sendbuffer + 6) = (int) htonl((int)tv_usec);
-        memcpy(sendbuffer + 10, data, sizeof(data));
+
 
         printf("===========\n");
         //printf("senddata:  %s\n", sendbuffer + 10);
@@ -142,22 +145,15 @@ int main(int argc, char** argv) {
 
         char *recbuffer;
         recbuffer = (char *) malloc(sendLen);
-        unsigned short recLen = 0;
-
-
+        unsigned short curSize = 0;
         unsigned short offset = 0;
-        while(sendLen >= size) {
-            recLen = recv(sock, recbuffer + offset, size, 0);
-            sendLen -= recLen;
+        unsigned short recLen = 0;
+        while(curSize != sendLen) {
+            recLen = recv(sock, recbuffer + offset, sendLen - offset, 0);
+            curSize += recLen;
             offset += recLen;
-            printf("sendLen: %d   recLen:  %d\n", sendLen, recLen);
         }
-        if(sendLen > 0) {
-            recLen = recv(sock, recbuffer + offset, sendLen, 0);
-            sendLen -= recLen;
-            offset += recLen;
-            printf("sendLen: %d   recLen:  %d\n", sendLen, recLen);
-        }
+
 
         // time latency
         struct timeval end;
