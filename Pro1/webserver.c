@@ -32,7 +32,7 @@ struct node {
     /* you will need to introduce some variables here to record
        all the information regarding this socket.
        e.g. what data needs to be sent next */
-    char* buffer;
+    //char* buffer;
     struct node *next;
 };
 
