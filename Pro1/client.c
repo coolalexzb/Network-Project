@@ -38,11 +38,13 @@ int main(int argc, char** argv) {
     unsigned short server_port = atoi (argv[2]);
 
     char *buffer;
-    int size = 500;
+    int size = 10000;
     int count;
     int num;
-    int cnt = argv[4]
-
+    unsigned short send_size = (unsigned short)strtol(argv[3],NULL,10);
+    int cnt = atoi(argv[4]);
+    printf("send_size: %d\n", send_size);
+    printf("cnt: %d\n", cnt);
     /* allocate a memory buffer in the heap */
     /* putting a buffer on the stack like:
 
@@ -105,12 +107,9 @@ int main(int argc, char** argv) {
         printf("Here is what we got: %s", buffer);
     }
 
-    char data[1001];
-    memset(data, 'a', sizeof(data));
-    memset(data + 500, 'b', 500);
-    printf("sentdata: %s\n", data);
-
     for(int i = 0; i < cnt; i++) {
+        char data[send_size - 10];
+        memset(data, 'a', sizeof(data));
         printf("Enter the value of the number to send: ");
         fgets(buffer, size, stdin);
         num = atol(buffer);
@@ -125,17 +124,19 @@ int main(int argc, char** argv) {
         gettimeofday(&start, NULL);
         time_t tv_sec = start.tv_sec;
         suseconds_t tv_usec = start.tv_usec;
-        unsigned short sendLen = strlen(data) + 10;
+        unsigned short sendLen = sizeof(data) + 10;
         char *sendbuffer;
         sendbuffer = (char *) malloc(sendLen);
 
         *(unsigned short *) (sendbuffer) = (unsigned short) htons(sendLen);
         *(int *) (sendbuffer + 2) = (int) htonl((int)tv_sec);
         *(int *) (sendbuffer + 6) = (int) htonl((int)tv_usec);
-        memcpy(sendbuffer + 10, data, strlen(data));
+        memcpy(sendbuffer + 10, data, sizeof(data));
 
         printf("===========\n");
-        printf("senddata:  %s\n", sendbuffer + 10);
+        //printf("senddata:  %s\n", sendbuffer + 10);
+        printf("senddata:   %ld\n", strlen(sendbuffer + 10));
+        printf("data:   %ld\n", sizeof(data));
         printf("sendLen: %d\n", sendLen);
         send(sock, sendbuffer, sendLen, 0);
 
@@ -143,11 +144,7 @@ int main(int argc, char** argv) {
         recbuffer = (char *) malloc(sendLen);
         unsigned short recLen = 0;
 
-        // time latency
-        struct timeval end;
-        gettimeofday(&end, NULL);
-        float time_use=(end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) * 0.001;
-        //parse
+
         unsigned short offset = 0;
         while(sendLen >= size) {
             recLen = recv(sock, recbuffer + offset, size, 0);
@@ -162,14 +159,19 @@ int main(int argc, char** argv) {
             printf("sendLen: %d   recLen:  %d\n", sendLen, recLen);
         }
 
-        unsigned short size = (short) ntohs(*(short *)(buffer));
-        int t1 = (int) ntohl(*(int *)(buffer + 2));
-        int t2 = (int) ntohl(*(int *)(buffer + 6));
-        printf("size:   %hi\n", size);
+        // time latency
+        struct timeval end;
+        gettimeofday(&end, NULL);
+        float time_use=(end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) * 0.001;
+        //parse
+        unsigned short size_t = (short) ntohs(*(short *)(recbuffer));
+        int t1 = (int) ntohl(*(int *)(recbuffer + 2));
+        int t2 = (int) ntohl(*(int *)(recbuffer + 6));
+        printf("size:   %d\n", size_t);
         printf("t1:   %d\n", t1);
         printf("t2:   %d\n", t2);
-
-        printf("recdata:   %s\n", recbuffer + 10);
+        //printf("recdata:   %s\n", recbuffer + 10);
+        printf("recdata:   %ld\n", strlen(recbuffer + 10));
         printf("time_use:  %f\n", time_use);
     }
 

@@ -18,16 +18,9 @@
 /* a few simple linked list functions             */
 /**************************************************/
 
-const char* HTTP_HEADER_200 = "HTTP/1.1 200 OK \r\n";
-const char* HTTP_HEADER_400 = "HTTP/1.1 400 Bad Request \r\n";
-const char* HTTP_HEADER_404 = "HTTP/1.1 404 Not Found \r\n";
-const char* HTTP_HEADER_500 = "HTTP/1.1 500 Internal Server Error \r\n";
-const char* HTTP_HEADER_501 = "HTTP/1.1 501 Not Implemented \r\n";
-const char* CONTENT_TEXT_END = "Content-Type: text/html\r\n\r\n";
-
 /* a buffer to read data */
 char *buf;
-int BUF_LEN = 1000;
+int BUF_LEN = 65535;
 char* HeaderResp[] = {"HTTP/1.1 200 OK \r\n", "HTTP/1.1 400 Bad Request \r\n", "HTTP/1.1 404 Not Found \r\n", "HTTP/1.1 500 Internal Server Error \r\n", "HTTP/1.1 501 Not Implemented \r\n", "Content-Type: text/html\r\n\r\n"};
 
 /* A linked list node data structure to maintain application
@@ -47,7 +40,6 @@ struct node {
    used when tearing down the connection */
 void dump(struct node *head, int socket) {
     struct node *current, *temp;
-
     current = head;
 
     while (current->next) {
@@ -358,14 +350,11 @@ int main(int argc, char **argv) {
                         close(current->socket);
                         dump(&head, current->socket);
                     } else {
-
                         if(strcmp(mode, "www") == 0) {
                             printf("buf\n%s\n", buf);
-
                             char* path = parse(buf, root_directory);
                             int status = getStatus(path);
                             printf("path %s\n", path);
-                            //char *respHeader;
 
                             switch(status){
                                 case 1:
@@ -392,17 +381,15 @@ int main(int argc, char **argv) {
                             dump(&head, current->socket);
                         } else {
                             //Ping-Pong
-
                             unsigned short size_t = (unsigned short) ntohs(*(unsigned short *)(buf));
                             int t1 = (int) ntohl(*(int *)(buf + 2));
                             int t2 = (int) ntohl(*(int *)(buf + 6));
                             printf("size:   %d\n", size_t);
                             printf("t1:   %d\n", t1);
                             printf("t2:   %d\n", t2);
-                            printf("data:   %s\n", buf + 10);
+                            //printf("data:   %s\n", buf + 10);
                             send(current->socket, buf, size_t, 0);
                         }
-
                     }
                 }
             }
