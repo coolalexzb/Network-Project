@@ -82,9 +82,11 @@ int getStatus(const char *path) {
         return 2;
     }else if(opendir(path) != NULL) {
         return 4;
+    }else if(open(path, O_RDONLY) >= 0){
+        return 0;
+    }else {
+        return 3;
     }
-
-    return 0;
 }
 
 char* concat(const char *s1, const char *s2) {
@@ -99,8 +101,9 @@ void sendInfo(char* path, struct node *current) {
     byte[BUF_LEN] = '\0';
     int file = open(path, O_RDONLY);
     if (file < 0) {
-        printf("path: %s\n", path);
-        printf("File open failed!\n");
+//        printf("path: %s\n", path);
+//        printf("File open failed!\n");
+        return;
     }
     lseek(file, 0, SEEK_SET);
     ssize_t cnt = read(file, &byte, BUF_LEN);
@@ -134,7 +137,6 @@ char* parse(char* buffer, char* root_directory) {
 
 void sendHeader(int index, struct node *current) {
     char *respHeader = concat(HeaderResp[index], HeaderResp[5]);
-    printf("H: %s", respHeader);
     send(current->socket, respHeader, strlen(respHeader) + 1, 0);
     free(respHeader);
     return;
@@ -167,8 +169,6 @@ int main(int argc, char **argv) {
 
     char* mode = argv[2];
     char* root_directory = argv[3];
-    printf("mode %s\n", mode);
-    printf("root_directory %s\n", root_directory);
 
     /* socket address variables for a connected client */
     socklen_t addr_len = sizeof(struct sockaddr_in);
@@ -205,14 +205,14 @@ int main(int argc, char **argv) {
     /* create a server socket to listen for TCP connection requests */
     if ((sock = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)              // server welcome socket
     {
-        perror ("opening TCP socket");
+        //perror ("opening TCP socket");
         abort ();
     }
 
     /* set option so we can reuse the port number quickly after a restart */
     if (setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof (optval)) <0)
     {
-        perror ("setting TCP socket option");
+        //perror ("setting TCP socket option");
         abort ();
     }
 
@@ -225,14 +225,14 @@ int main(int argc, char **argv) {
     /* bind server socket to the address */
     if (bind(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0)      // bind server ip port to socket
     {
-        perror("binding socket to address");
+        //perror("binding socket to address");
         abort();
     }
 
     /* put the server socket in listen mode */
     if (listen (sock, BACKLOG) < 0)                           // to listen status
     {
-        perror ("listen on socket failed");
+        //perror ("listen on socket failed");
         abort();
     }
 
@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
         select_retval = select(max+1, &read_set, &write_set, NULL, &time_out);    // cnt of variable socket
         if (select_retval < 0)
         {
-            perror ("select failed");
+            //perror ("select failed");
             abort ();
         }
 
@@ -290,7 +290,7 @@ int main(int argc, char **argv) {
 
                 if (new_sock < 0)
                 {
-                    perror ("error accepting connection");
+                    //perror ("error accepting connection");
                     abort ();
                 }
 
@@ -302,25 +302,17 @@ int main(int argc, char **argv) {
                     */
                 if (fcntl (new_sock, F_SETFL, O_NONBLOCK) < 0)
                 {
-                    perror ("making socket non-blocking");
+                    //perror ("making socket non-blocking");
                     abort ();
                 }
 
                 /* the connection is made, everything is ready */
                 /* let's see who's connecting to us */
-                printf("Accepted connection. Client IP address is: %s\n",
-                       inet_ntoa(addr.sin_addr));
+//                printf("Accepted connection. Client IP address is: %s\n",
+//                       inet_ntoa(addr.sin_addr));
 
                 /* remember this client connection in our linked list */
                 add(&head, new_sock, addr);
-
-                /* let's send a message to the client just for fun */
-//                count = send(new_sock, message, strlen(message)+1, 0);                // delete!!!
-//                if (count < 0)
-//                {
-//                    perror("error sending message to client");
-//                    abort();
-//                }
             }
 
             /* check other connected sockets, see if there is
@@ -363,9 +355,9 @@ int main(int argc, char **argv) {
                     if (count <= 0) {
                         /* something is wrong */
                         if (count == 0) {
-                            printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
+                            //printf("Client closed connection. Client IP address is: %s\n", inet_ntoa(current->client_addr.sin_addr));
                         } else {
-                            perror("error receiving from a client");
+                            //perror("error receiving from a client");
                         }
 
                         /* connection is closed, clean up */
@@ -373,12 +365,8 @@ int main(int argc, char **argv) {
                         dump(&head, current->socket);
                     } else {
                         if(strcmp(mode, "www") == 0) {
-                            printf("buf\n%s\n", current->buffer);
                             char* path = parse(current->buffer, root_directory);
-                            printf("root_directory: %s\n",root_directory);
                             int status = getStatus(path);
-                            printf("path %s\n", path);
-
                             memset(current->buffer, 0, BUF_LEN);
                             switch(status){
                                 case 1:
@@ -393,6 +381,11 @@ int main(int argc, char **argv) {
                                     current->pending_data = 1;
                                     current->totalSize = strlen(current->buffer);
                                     break;
+                                case 3:
+                                    strcpy(current->buffer, "500");
+                                    sendHeader(status, current);
+                                    current->pending_data = 1;
+                                    current->totalSize = strlen(current->buffer);
                                 case 4:
                                     strcpy(current->buffer, "501");
                                     sendHeader(status, current);
@@ -415,7 +408,6 @@ int main(int argc, char **argv) {
                             current->offset += (unsigned short)count;
                             if(current->totalSize == current->curSize) {
                                 current->pending_data = 1;
-                                printf("data:   %ld\n", strlen(current->buffer + 10));
                             }
                         }
                     }
