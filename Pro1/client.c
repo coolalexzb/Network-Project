@@ -59,8 +59,6 @@ int main(int argc, char** argv) {
         abort();
     }
 
-
-
     /* create a socket */
     if ((sock = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
     {
@@ -84,48 +82,38 @@ int main(int argc, char** argv) {
        message from the server in this example, let's try receiving a
        message from the socket. this call will block until some data
        has been received */
-    count = recv(sock, buffer, size, 0);
-    if (count < 0)
-    {
-        perror("receive failure");
-        abort();
-    }
-
-    /* in this simple example, the message is a string,
-       we expect the last byte of the string to be 0, i.e. end of string */
-    if (buffer[count-1] != 0)
-    {
-        /* In general, TCP recv can return any number of bytes, not
-       necessarily forming a complete message, so you need to
-       parse the input to see if a complete message has been received.
-           if not, more calls to recv is needed to get a complete message.
-        */
-        printf("Message incomplete, something is still being transmitted\n");
-    }
-    else
-    {
-        printf("Here is what we got: %s", buffer);
-    }
+//    count = recv(sock, buffer, size, 0);
+//    if (count < 0)
+//    {
+//        perror("receive failure");
+//        abort();
+//    }
+//
+//    /* in this simple example, the message is a string,
+//       we expect the last byte of the string to be 0, i.e. end of string */
+//    if (buffer[count-1] != 0)
+//    {
+//        /* In general, TCP recv can return any number of bytes, not
+//       necessarily forming a complete message, so you need to
+//       parse the input to see if a complete message has been received.
+//           if not, more calls to recv is needed to get a complete message.
+//        */
+//        printf("Message incomplete, something is still being transmitted\n");
+//    }
+//    else
+//    {
+//        printf("Here is what we got: %s", buffer);
+//    }
 
     int i = 0;
     for(i = 0; i < cnt; i++) {
         char data[send_size - 10];
         memset(data, 'a', sizeof(data));
-//        printf("Enter the value of the number to send: ");
-//        fgets(buffer, size, stdin);
-//        num = atol(buffer);
-//        if (strncmp(buffer, "bye", 3) == 0) {
-//            /* free the resources, generally important! */
-//            close(sock);
-//            free(buffer);
-//            return 0;
-//        }
-
+        data[sizeof(data) - 1] = '\0';
 
         unsigned short sendLen = sizeof(data) + 10;
         char *sendbuffer;
         sendbuffer = (char *) malloc(sendLen);
-        memcpy(sendbuffer + 10, data, sizeof(data));
 
         struct timeval start;
         gettimeofday(&start, NULL);
@@ -134,13 +122,8 @@ int main(int argc, char** argv) {
         *(unsigned short *) (sendbuffer) = (unsigned short) htons(sendLen);
         *(int *) (sendbuffer + 2) = (int) htonl((int)tv_sec);
         *(int *) (sendbuffer + 6) = (int) htonl((int)tv_usec);
-
-
-        printf("===========\n");
-        //printf("senddata:  %s\n", sendbuffer + 10);
+        memcpy(sendbuffer + 10, data, sizeof(data));
         printf("senddata:   %ld\n", strlen(sendbuffer + 10));
-        printf("data:   %ld\n", sizeof(data));
-        printf("sendLen: %d\n", sendLen);
         send(sock, sendbuffer, sendLen, 0);
 
         char *recbuffer;
@@ -149,11 +132,10 @@ int main(int argc, char** argv) {
         unsigned short offset = 0;
         unsigned short recLen = 0;
         while(curSize != sendLen) {
-            recLen = recv(sock, recbuffer + offset, sendLen - offset, 0);
+            recLen = recv(sock, recbuffer + offset, sendLen, 0);
             curSize += recLen;
             offset += recLen;
         }
-
 
         // time latency
         struct timeval end;
@@ -163,12 +145,8 @@ int main(int argc, char** argv) {
         unsigned short size_t = (short) ntohs(*(short *)(recbuffer));
         int t1 = (int) ntohl(*(int *)(recbuffer + 2));
         int t2 = (int) ntohl(*(int *)(recbuffer + 6));
-        printf("size:   %d\n", size_t);
-        printf("t1:   %d\n", t1);
-        printf("t2:   %d\n", t2);
-        //printf("recdata:   %s\n", recbuffer + 10);
         printf("recdata:   %ld\n", strlen(recbuffer + 10));
-        printf("time_use:  %f\n", time_use);
+        printf("rtt:  %f\n", time_use);
     }
 
 

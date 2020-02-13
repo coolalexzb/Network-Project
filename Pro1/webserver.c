@@ -32,7 +32,11 @@ struct node {
     /* you will need to introduce some variables here to record
        all the information regarding this socket.
        e.g. what data needs to be sent next */
-    //char* buffer;
+    char* buffer;
+    unsigned short curSize;
+    unsigned short totalSize;
+    unsigned short offset;
+    unsigned short flag;
     struct node *next;
 };
 
@@ -63,6 +67,11 @@ void add(struct node *head, int socket, struct sockaddr_in addr) {
     new_node->client_addr = addr;
     new_node->pending_data = 0;
     new_node->next = head->next;
+    new_node->offset = 0;
+    new_node->buffer = (char *)malloc(BUF_LEN);
+    new_node->curSize = 0;
+    new_node->totalSize = 0;
+    new_node->flag = 0;
     head->next = new_node;
 }
 
@@ -98,24 +107,29 @@ void sendInfo(char* path, struct node *current) {
 
     int offset = 1;
     while(cnt > 0) {
-        buf = byte;
-        send(current->socket, buf, strlen(buf) + 1, 0);
+        //current->buffer = byte;
+        strcpy(current->buffer, byte);
+        send(current->socket, current->buffer, strlen(current->buffer) + 1, 0);
         lseek(file, BUF_LEN * offset, SEEK_SET);
-        memset(byte,'\0',sizeof(byte));
+        memset(byte, 0, sizeof(byte));
         cnt = read(file, &byte, BUF_LEN);
         offset++;
     }
     close(file);
 }
 
-char* parse(char* buf, char* root_directory) {
-    char* ele = strtok(buf, " /t/r/n");
+char* parse(char* buffer, char* root_directory) {
+    char* ele = strtok(buffer, " /t/r/n");
     if (ele != NULL)
     {
         ele = strtok(NULL, " ");
     }
     char *filename = ele;
-    return strcat(root_directory, filename);
+    int size = strlen(root_directory) + strlen(filename) + 1;
+    char* path = (char*) malloc(size);
+    memset(path, 0, size);
+    strcpy(path, root_directory);
+    return strcat(path, filename);
 }
 
 void sendHeader(int index, struct node *current) {
@@ -123,6 +137,16 @@ void sendHeader(int index, struct node *current) {
     printf("H: %s", respHeader);
     send(current->socket, respHeader, strlen(respHeader) + 1, 0);
     free(respHeader);
+    return;
+}
+
+void clear(struct node *current) {
+    memset(current->buffer, 0, BUF_LEN);
+    current->totalSize = 0;
+    current->offset = 0;
+    current->pending_data = 0;
+    current->curSize = 0;
+    current->flag = 0;
     return;
 }
 /*****************************************/
@@ -217,7 +241,6 @@ int main(int argc, char **argv) {
        check for ready socket to send more data */
     while (1)
     {
-
         /* set up the file descriptor bit map that select should be watching */
         FD_ZERO (&read_set); /* clear everything */               // file descriptor receive
         FD_ZERO (&write_set); /* clear everything */              // file descriptor send out
@@ -228,7 +251,6 @@ int main(int argc, char **argv) {
         /* put connected sockets into the read and write sets to monitor them */
         for (current = head.next; current; current = current->next) {     // multiple connections
             FD_SET(current->socket, &read_set);
-
             if (current->pending_data) {                                 // read multiple times
                 /* there is data pending to be sent, monitor the socket
                        in the write set so we know when it is ready to take more
@@ -293,12 +315,12 @@ int main(int argc, char **argv) {
                 add(&head, new_sock, addr);
 
                 /* let's send a message to the client just for fun */
-                count = send(new_sock, message, strlen(message)+1, 0);                // delete!!!
-                if (count < 0)
-                {
-                    perror("error sending message to client");
-                    abort();
-                }
+//                count = send(new_sock, message, strlen(message)+1, 0);                // delete!!!
+//                if (count < 0)
+//                {
+//                    perror("error sending message to client");
+//                    abort();
+//                }
             }
 
             /* check other connected sockets, see if there is
@@ -306,7 +328,6 @@ int main(int argc, char **argv) {
                    more pending data */
             for (current = head.next; current; current = next) {
                 next = current->next;
-
                 /* see if we can now do some previously unsuccessful writes */
                 if (FD_ISSET(current->socket, &write_set)) {
                     /* the socket is now ready to take more data */
@@ -315,7 +336,7 @@ int main(int argc, char **argv) {
                        but here for simplicity, let's say we are just
                            sending whatever is in the buffer buf
                          */
-                    count = send(current->socket, buf, BUF_LEN, MSG_DONTWAIT);
+                    count = send(current->socket, current->buffer, current->totalSize, MSG_DONTWAIT);
                     if (count < 0) {
                         if (errno == EAGAIN) {
                             /* we are trying to dump too much data down the socket,
@@ -332,12 +353,12 @@ int main(int argc, char **argv) {
                            no error. send() may send only a portion of the buffer
                            to be sent.
                     */
+                    clear(current);
                 }
 
                 if (FD_ISSET(current->socket, &read_set)) {
                     /* we have data from a client */
-
-                    count = recv(current->socket, buf, BUF_LEN, 0);
+                    count = recv(current->socket, current->buffer + current->offset, BUF_LEN, 0);
 
                     if (count <= 0) {
                         /* something is wrong */
@@ -352,54 +373,50 @@ int main(int argc, char **argv) {
                         dump(&head, current->socket);
                     } else {
                         if(strcmp(mode, "www") == 0) {
-                            printf("buf\n%s\n", buf);
-                            char* path = parse(buf, root_directory);
+                            printf("buf\n%s\n", current->buffer);
+                            char* path = parse(current->buffer, root_directory);
+                            printf("root_directory: %s\n",root_directory);
                             int status = getStatus(path);
                             printf("path %s\n", path);
 
+                            memset(current->buffer, 0, BUF_LEN);
                             switch(status){
                                 case 1:
-                                    buf = "400";
+                                    strcpy(current->buffer, "400");
                                     sendHeader(status, current);
-                                    send(current->socket, buf, strlen(buf) + 1, 0);
+                                    current->pending_data = 1;
+                                    current->totalSize = strlen(current->buffer);
                                     break;
                                 case 2:
-                                    buf = "404";
+                                    strcpy(current->buffer, "404");
                                     sendHeader(status, current);
-                                    send(current->socket, buf, strlen(buf) + 1, 0);
+                                    current->pending_data = 1;
+                                    current->totalSize = strlen(current->buffer);
                                     break;
                                 case 4:
-                                    buf = "501";
+                                    strcpy(current->buffer, "501");
                                     sendHeader(status, current);
-                                    send(current->socket, buf, strlen(buf) + 1, 0);
+                                    current->pending_data = 1;
+                                    current->totalSize = strlen(current->buffer);
                                     break;
                                 default:
                                     sendHeader(status, current);
                                     sendInfo(path, current);
+                                    clear(current);
                             }
-
-                            close(current->socket);
-                            dump(&head, current->socket);
                         } else {
                             //Ping-Pong
-                            unsigned short size_t = (unsigned short) ntohs(*(unsigned short *)(buf));
-                            unsigned short curSize = count;
-                            unsigned short offset = count;
-                            unsigned short recLen = 0;
-                            while(curSize != size_t) {
-                                recLen = recv(current->socket, buf + offset, BUF_LEN, 0);
-                                curSize += recLen;
-                                offset += recLen;
+                            if(current->flag == 0) {
+                                unsigned short size_t = (unsigned short) ntohs(*(unsigned short *)(current->buffer));
+                                current->totalSize = size_t;
+                                current->flag = 1;
                             }
-
-                            int t1 = (int) ntohl(*(int *)(buf + 2));
-                            int t2 = (int) ntohl(*(int *)(buf + 6));
-                            printf("size:   %d\n", size_t);
-                            printf("t1:   %d\n", t1);
-                            printf("t2:   %d\n", t2);
-                            printf("data:   %ld\n", strlen(buf + 10));
-                            //printf("data:   %s\n", buf + 10);
-                            send(current->socket, buf, size_t, 0);
+                            current->curSize += (unsigned short)count;
+                            current->offset += (unsigned short)count;
+                            if(current->totalSize == current->curSize) {
+                                current->pending_data = 1;
+                                printf("data:   %ld\n", strlen(current->buffer + 10));
+                            }
                         }
                     }
                 }
