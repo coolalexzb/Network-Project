@@ -119,6 +119,7 @@ int main(int argc, char **argv) {
         {
             if (FD_ISSET(sock, &read_set))                  /* check the server socket */
             {
+                //TODO
                 count = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
 
             }

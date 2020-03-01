@@ -11,117 +11,135 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/time.h>
+#include <fcntl.h>
+
 
 /* simple client, takes two parameters, the server domain name,
    and the server port number */
 
+char *buf;
+int BUF_LEN = 65535;
+
 int main(int argc, char** argv) {
 
-    /* our client socket */
-    int sock, server_sock;
 
-    /* variables for identifying the server */
-    unsigned int server_addr;
-    struct sockaddr_in sin;
-    struct addrinfo *getaddrinfo_result, hints;
+    char* recv_host = strtok(argv[2], ":");
+    unsigned short recv_port = atoi(strtok(NULL, ":"));
+    char* subdir = strtok(argv[4], "/");
+    char* filename = strtok( NULL, "/");
 
-    /* convert server domain name to IP address */
-    memset(&hints, 0, sizeof(struct addrinfo));
-    hints.ai_family = AF_INET; /* indicates we want IPv4 */
+    /* server socket address variables */
+    struct sockaddr_in sin, sout, addr;
 
-    if (getaddrinfo(argv[1], NULL, &hints, &getaddrinfo_result) == 0) {
-        server_addr = (unsigned int) ((struct sockaddr_in *) (getaddrinfo_result->ai_addr))->sin_addr.s_addr;
-        freeaddrinfo(getaddrinfo_result);
-    }
+    /* socket address variables for a connected client */
+    socklen_t addr_len = sizeof(struct sockaddr_in);
 
-    /* server port number */
-    unsigned short server_port = atoi (argv[2]);
+    /* socket and option variables */
+    int sock, max;
+    int optval = 1;
 
-    char *buffer;
-    int size = 65535;
-    unsigned short send_size = (unsigned short)strtol(argv[3],NULL,10);
-    int cnt = atoi(argv[4]);
-    /* allocate a memory buffer in the heap */
-    /* putting a buffer on the stack like:
+    /* maximum number of pending connection requests */
+    int BACKLOG = 5;
 
-           char buffer[500];
+    /* variables for select */
+    fd_set read_set, write_set;
+    struct timeval time_out;
+    int select_retval;
 
-       leaves the potential for
-       buffer overflow vulnerability */
-    buffer = (char *) malloc(size);
-    if (!buffer)
-    {
-        //perror("failed to allocated buffer");
+    /* number of bytes sent/received */
+    int count;
+
+    // Creating socket file descriptor
+    if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("socket creation failed");
         abort();
     }
 
-    /* create a socket */
-    if ((sock = socket (PF_INET, SOCK_STREAM, IPPROTO_TCP)) < 0)
+    /* fill in the address of the server socket */
+    memset(&sin, 0, sizeof(sin));
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = INADDR_ANY;
+    sin.sin_port = htons(recv_port);
+
+    // init receiver address info
+    memset(&sout, 0, sizeof(sout));
+    sout.sin_family = AF_INET;
+    sout.sin_addr.s_addr = inet_addr(recv_host);
+    sout.sin_port = htons(recv_port);
+
+    buf = (char *)malloc(BUF_LEN);
+
+
+    /* bind server socket to the address */
+    if (bind(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0)      // bind server ip port to socket
     {
-        //perror ("opening TCP socket");
+        perror("binding socket to address");
+        abort();
+    }
+
+    /* put the server socket in listen mode */
+    if (listen (sock, BACKLOG) < 0)                           // to listen status
+    {
+        perror ("listen on socket failed");
+        abort();
+    }
+
+    /* make the socket non-blocking so send and recv will
+     return immediately if the socket is not ready.
+     this is important to ensure the server does not get
+     stuck when trying to send data to a socket that
+     has too much data to send already.*/
+    if (fcntl (sock, F_SETFL, O_NONBLOCK) < 0)
+    {
+        perror ("making socket non-blocking");
         abort ();
     }
-    /* fill in the server's address */
-    memset (&sin, 0, sizeof (sin));
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = server_addr;
-    sin.sin_port = htons(server_port);
 
-    /* connect to the server */
-    if (connect(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0)
-    {
-        //perror("connect to server failed");
-        abort();
-    }
+    while(1) {
 
-    int i = 0;
-    float time_total = 0;
-    for(i = 0; i < cnt; i++) {
-        char data[send_size - 10];
-        memset(data, 'a', sizeof(data));
-        data[sizeof(data) - 1] = '\0';
 
-        unsigned short sendLen = sizeof(data) + 10;
-        char *sendbuffer;
-        sendbuffer = (char *) malloc(sendLen);
+        // TODO 1st send packet
 
-        struct timeval start;
-        gettimeofday(&start, NULL);
-        time_t tv_sec = start.tv_sec;
-        suseconds_t tv_usec = start.tv_usec;
-        *(unsigned short *) (sendbuffer) = (unsigned short) htons(sendLen);
-        *(int *) (sendbuffer + 2) = (int) htonl((int)tv_sec);
-        *(int *) (sendbuffer + 6) = (int) htonl((int)tv_usec);
-        memcpy(sendbuffer + 10, data, sizeof(data));
 
-        send(sock, sendbuffer, sendLen, 0);
+        // recv ACK
 
-        char *recbuffer;
-        recbuffer = (char *) malloc(sendLen);
-        unsigned short curSize = 0;
-        unsigned short offset = 0;
-        unsigned short recLen = 0;
-        while(curSize != sendLen) {
-            recLen = recv(sock, recbuffer + offset, sendLen, 0);
-            curSize += recLen;
-            offset += recLen;
+
+        FD_ZERO (&read_set); /* clear everything */               // file descriptor receive
+        FD_ZERO (&write_set); /* clear everything */              // file descriptor send out
+
+        FD_SET (sock, &read_set); /* put the listening socket in */
+
+        time_out.tv_usec = 100000; /* 1-tenth of a second timeout */
+        time_out.tv_sec = 0;
+
+        /* invoke select, make sure to pass max+1 !!! */
+        select_retval = select(max + 1, &read_set, &write_set, NULL, &time_out);    // cnt of variable socket
+        if (select_retval < 0)
+        {
+            perror ("select failed");
+            abort ();
         }
 
-        // time latency
-        struct timeval end;
-        gettimeofday(&end, NULL);
-        float time_use=(end.tv_sec - start.tv_sec) * 1000 + (end.tv_usec - start.tv_usec) * 0.001;
-        printf("rtt:  %f\n", time_use);
-        if(time_use > 3){
+        if (select_retval == 0)                                   // no var within timeout
+        {
+            /* no descriptor ready, timeout happened */
             continue;
         }
-        time_total += time_use;
-        cnt--;
+
+        if (select_retval > 0) /* at least one file descriptor is ready */
+        {
+            if (FD_ISSET(sock, &read_set))                  /* check the server socket */
+            {
+                //TODO when recv ack packet
+
+            }
+
+        }
+
+    }
     }
 
-    float time_avg = time_total / cnt;
-    //printf("cnt: %d\n", cnt);
-    //printf("time_avg: %f\n", time_avg);
 
     return 0;
 }
