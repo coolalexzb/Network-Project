@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         time_out.tv_sec = 0;
 
         /* invoke select, make sure to pass max+1 !!! */
-        select_retval = select(max + 1, &read_set, &write_set, NULL, &time_out);    // cnt of variable socket
+        select_retval = select(sock + 1, &read_set, &write_set, NULL, &time_out);    // cnt of variable socket
         if (select_retval < 0)
         {
             perror ("select failed");
@@ -138,8 +138,6 @@ int main(int argc, char** argv) {
         }
 
     }
-    }
-
 
     return 0;
 }
