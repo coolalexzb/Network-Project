@@ -1,44 +1,60 @@
 //
 // Created by 郑博 on 3/1/20.
 //
+#ifndef PRO2_PACKETSENDHANDLER_H
+#define PRO2_PACKETSENDHANDLER_H
+
 #include <iostream>
+#include <fstream> 
 #include <sys/time.h>
 #include <vector>
 using namespace std;
 
-#ifndef PRO2_PACKETSENDHANDLER_H
-#define PRO2_PACKETSENDHANDLER_H
+const int WINDOW_SIZE = 10;
+const int PACKET_HEADER_LENGTH = 10;
+const int PACKET_DATA_LENGTH = 10;
+const int PACKET_TIMEOUT_TIME = 10;
 
 struct packet {
     char* data;
-    int len;
-    int seq;
+    short len;
+    short seq;
     time_t time;
     bool isAck;
 };
 
+typedef struct packet *packetPtr;
+
 class PacketSendHandler {
 public:
-    PacketSendHandler();
-    packet* mvSlideWindow();
-    bool isOver();
-    vector<packet *> getNAckPacket();
-    bool isSlideWindowLeft();
-    void updateSeq(int seqNum);
-    void recv_ack(int ack);
-    ~PacketSendHandler();
+    
+	PacketSendHandler(char* filePath);
+	~PacketSendHandler();
+
+	packetPtr newPacket();
+    packetPtr getUnAckPacket(time_t curTime);
+    void recv_ack(short ackSeq);
+	bool isWindowFull();
+	bool isOver();
 
 private:
-    packet *slideWindow;                    // sliding window
-    vector<packet *>  packetRe;             // packet not ack
-    int seqOldest;                          // The oldest seq Number of packet not sent successfully
-    int seqNext;                            // Next packet to be sent
 
-    char* file;
+	packet *slideWindow;					// sliding window
+	int seqSize;							// sliding window sequence size
+    
+	bool startSending;						// whether start sending
+	bool finishSending;						// whether finish sending
+	short seqFirst;							// The first seq Number of packet not sent successfully
+    short seqNext;							// Next packet to be sent
+
+    ifstream fin;
+	char* filePath;
     long fileLen;
-    long filePos;
+    long sendingPos;
 
-    void init(char* filePath);
-
+    void init();
+	bool isInWindow(short ackSeq);
+	void updateSeqInfo(short ackSeq);
 };
+
 #endif //PRO2_PACKETSENDHANDLER_H
