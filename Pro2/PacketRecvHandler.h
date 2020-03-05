@@ -12,13 +12,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-
+#include "helper.h"
 
 using namespace std;
 
-int WINDOW_SIZE = 64;
-int DATA_PACKET_DATA_LENGTH = 60000;
-int DATA_PACKET_CONTENT = 6;
+//int WINDOW_SIZE = 64;
+//int DATA_PACKET_DATA_LENGTH = 10;
+//int DATA_PACKET_CONTENT = 6;
 
 struct packet {
     char *data;
@@ -28,7 +28,7 @@ struct packet {
 
 class PacketRecvHandler {
 public:
-    PacketRecvHandler(char* filePath = "./test");
+    PacketRecvHandler(char* filePath);
     bool isOver();
     short getNextSeq();
     short recvPacket(char * packet, int length, bool isHeader);

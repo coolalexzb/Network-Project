@@ -15,18 +15,20 @@
 #include <fcntl.h>
 #include "PacketRecvHandler.h"
 
+#include "helper.h"
 /* a buffer to read data */
 char *buf;
 int BUF_LEN = 65535;
-int ACK_PACKET_LENGTH = 8;
-int ACK_NO_VALUE_FLAG = -1;
-int PacketNum = 0;
+//int ACK_PACKET_LENGTH = 8;
+//int ACK_NO_VALUE_FLAG = -1;
+//int PacketNum = 0;
+//int DATA_PACKET_SEQ= 0;
+//int DATA_PACKET_CKSUM = 2;
+//int DATA_PACKET_LEN = 4;
+//int ACK_PACKET_CKSUM_LENGTH = 2;
+
 bool ackFinished = false;
 bool headerFlag = true;
-int DATA_PACKET_SEQ= 0;
-int DATA_PACKET_CKSUM = 2;
-int DATA_PACKET_LEN = 4;
-int ACK_PACKET_CKSUM_LENGTH = 2;
 
 
 bool checksum(unsigned short ckSum, int recvLen)
@@ -126,7 +128,7 @@ int main(int argc, char **argv) {
         abort ();
     }
 
-    PacketRecvHandler packetHandler("./test".c_str());
+    PacketRecvHandler packetHandler("./test");
     printf("pre step ok!");
     while(1)
     {
@@ -161,8 +163,8 @@ int main(int argc, char **argv) {
                 printf("count: %d", count);
                 short ckSum = (short) ntohs(*(short *)(buf));
 
-                int ackSeqNum = packetHandler->recvPacket(buf, count, headerFlag);
-                if(packetHandler->isOver()) {
+                int ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+                if(packetHandler.isOver()) {
                     ackFinished = true;
                 }
                 generateAck(ackSeqNum, buf, ackFinished);

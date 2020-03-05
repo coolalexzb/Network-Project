@@ -18,11 +18,6 @@ void PacketSendHandler::init() {
 	seqNext = 0;
 	startSending = false;
 	finishSending = false;
-
-	// init file
-	fin.seekg(0, std::ios::end);
-	fileLen= fin.tellg();
-	fin.seekg(0, std::ios::beg);
 	sendingPos = 0;
 }
 
@@ -43,7 +38,12 @@ void PacketSendHandler::updateSeqInfo(short ackSeq) {
 }
 
 PacketSendHandler::PacketSendHandler(char* filePath) {
-	fin = &ifstream(filePath, std::ios::binary | std::ios::in);
+
+    file = open(filePath, O_FSYNC | O_RDWR | O_CREAT, 0777);
+    if (file < 0) {
+        printf("File open failed!\n");
+        return;
+    }
 	
 	size_t length = strlen(filePath);
 	this->filePath = new char[length];
@@ -53,8 +53,8 @@ PacketSendHandler::PacketSendHandler(char* filePath) {
 }
 
 PacketSendHandler::~PacketSendHandler() {
-	fin.close();
-	
+    close(file);
+
 	for (int i = 0; i < seqSize; i++)
 		delete slideWindow[i].data;
 	delete[] slideWindow;
@@ -85,17 +85,17 @@ packetPtr PacketSendHandler::newPacket()
 		if (lenToSend <= PACKET_DATA_LENGTH) {
 
 			*(short *)(thisPacket->data + PACKET_HEADER_LENGTH) = (short)htons(lenToSend);
-			fin.read(thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short), lenToSend);
+            lseek(file, sendingPos, SEEK_SET);
+            read(file, thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short), lenToSend);
 			thisPacket->len = PACKET_HEADER_LENGTH + sizeof(short) + lenToSend;
-
 			sendingPos = fileLen;
 			finishSending = true;
 		}
 		else {
 			*(short *)(thisPacket->data + PACKET_HEADER_LENGTH) = (short)htons(PACKET_DATA_LENGTH);
-			fin.read(thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short), PACKET_DATA_LENGTH);
+            lseek(file, sendingPos, SEEK_SET);
+            read(file, thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short), PACKET_DATA_LENGTH);
 			thisPacket->len = PACKET_HEADER_LENGTH + sizeof(short) + PACKET_DATA_LENGTH;
-
 			sendingPos += PACKET_DATA_LENGTH;
 		}
 	}

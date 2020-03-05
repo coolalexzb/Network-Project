@@ -4,19 +4,25 @@
 #ifndef PRO2_PACKETSENDHANDLER_H
 #define PRO2_PACKETSENDHANDLER_H
 
-#include <iostream>
-#include <fstream> 
 #include <sys/time.h>
 #include <vector>
 #include <cstring>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <fcntl.h>
+#include <iostream>
+#include "helper.h"
+
 using namespace std;
 
-const int WINDOW_SIZE = 10;
-const int PACKET_HEADER_LENGTH = 10;
-const int PACKET_DATA_LENGTH = 10;
-const int PACKET_TIMEOUT_TIME = 10;
+//const int WINDOW_SIZE = 10;
+//const int PACKET_HEADER_LENGTH = 10;
+//const int PACKET_DATA_LENGTH = 10;
+//const int PACKET_TIMEOUT_TIME = 10;
 
 struct packet {
     char* data;
@@ -50,7 +56,7 @@ private:
 	short seqFirst;							// The first seq Number of packet not sent successfully
     short seqNext;							// Next packet to be sent
 
-    ifstream& fin;
+    int file;
 	char* filePath;
     long fileLen;
     long sendingPos;

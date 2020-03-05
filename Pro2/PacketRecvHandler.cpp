@@ -4,7 +4,7 @@
 
 #include "PacketRecvHandler.h"
 
-PacketRecvHandler::PacketRecvHandler(char* filePath = "./test") {
+PacketRecvHandler::PacketRecvHandler(char* filePath) {
     init(filePath);
 }
 

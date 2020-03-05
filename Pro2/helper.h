@@ -1,0 +1,21 @@
+//
+// Created by 郑博 on 3/5/20.
+//
+
+#ifndef PRO2_HELPER_H
+#define PRO2_HELPER_H
+
+
+int DATA_PACKET_DATA_LENGTH = 10;
+int DATA_PACKET_CONTENT = 6;
+const int WINDOW_SIZE = 10;
+const int PACKET_HEADER_LENGTH = 10;
+const int PACKET_DATA_LENGTH = 10;
+const int PACKET_TIMEOUT_TIME = 10;
+int ACK_PACKET_LENGTH = 8;
+int DATA_PACKET_SEQ= 0;
+int DATA_PACKET_CKSUM = 2;
+int DATA_PACKET_LEN = 4;
+int ACK_PACKET_CKSUM_LENGTH = 2;
+
+#endif //PRO2_HELPER_H
