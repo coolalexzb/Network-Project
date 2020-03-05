@@ -13,7 +13,7 @@
 #include <netdb.h>
 #include <sys/time.h>
 #include <fcntl.h>
-#include <PacketSendHandler.cpp>
+#include "PacketSendHandler.h"
 
 
 /* simple client, takes two parameters, the server domain name,

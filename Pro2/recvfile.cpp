@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
         abort ();
     }
 
-    PacketRecvHandler* packetHandler = new PacketRecvHandler();
+    PacketRecvHandler packetHandler("./test".c_str());
     printf("pre step ok!");
     while(1)
     {
