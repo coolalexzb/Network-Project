@@ -1,3 +1,0 @@
-/Users/zhengbo/Documents/556/comp556/Pro2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/Users/zhengbo/Documents/556/comp556/Pro2/cmake-build-debug/CMakeFiles/edit_cache.dir
-/Users/zhengbo/Documents/556/comp556/Pro2/cmake-build-debug/CMakeFiles/Pro2.dir
