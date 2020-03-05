@@ -1,0 +1,16 @@
+Group Member
+Bo Zheng bz30
+Zijie Song zs22
+Yao Li yl185
+
+Run ping-pong(server: jade.clear.rice.edu / client: agate.clear.rice.edu)
+gcc -o client client_num.c
+./server 18000 xxx /            (must add value to argv[2], argv[3])
+./client jade.clear.rice.edu 18000 10000 10000
+
+
+Run web server(server: jade.clear.rice.edu)
+gcc -o server server_num.c
+./server 18000 www /storage-home/b/bz30
+Input url in chrome
+http://jade.clear.rice.edu:18000/pro1.htm
