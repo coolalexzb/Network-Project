@@ -24,8 +24,7 @@ int BUF_LEN = 65535;
 
 // ACK packet
 const int ACK_FLAG_POS = 0;
-const int ACK_SEQ_POS = 2;
-const int ACK_CHECKSUM_POS = 4;
+const int ACK_CHECKSUM_POS = 2;
 
 // send packet
 const int SEND_SEQ_POS = 0;
@@ -89,8 +88,7 @@ int main(int argc, char **argv) {
 
     buf = (char *) malloc(BUF_LEN);
 
-    // TODO: handle init?
-    PacketSendHandler handle = PacketSendHandler(filename);
+    PacketSendHandler handle(filename);
 
     /* bind server socket to the address */
     if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0)      // bind server ip port to socket
@@ -125,10 +123,10 @@ int main(int argc, char **argv) {
         gettimeofday(&tv, nullptr);
         time_t currTime = tv.tv_usec / 1000 + tv.tv_sec * 1000;
         if (currTime - checkTimeout > (time_out.tv_usec / 1000 + time_out.tv_sec * 1000)) {
-            packet resendPacket = handle.getNAckPacket(currTime);
+            packetPtr resendPacket = handle.getUnAckPacket(currTime);
             gettimeofday(&tv, nullptr);
-            resendPacket.time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-            sendto(sock, resendPacket.data, resendPacket.len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
+            resendPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
+            sendto(sock, resendPacket->data, resendPacket->len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
 
             /*
             vector<packet *> timeoutPackets = handle.getNAckPacket(currTime);
@@ -140,18 +138,18 @@ int main(int argc, char **argv) {
                 gettimeofday(&tv, nullptr);
                 tmpPacket.time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
                 // TODO &???
-                sendto(sock, tmpPacket.data, tmpPacket.len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
+                sendto(sock, tmpPacket.data, tmpPacket.len, 0, (sockaddr *) &sout.sin_addr.s_addr, sizeof(sockaddr));
             }*/
 
             checkTimeout = currTime;
         }
 
         // send more packets
-        if (handle.isSlideWindowLeft() && handle.isOver() == false) {
-            packet newPacket = handle.newPacket();
+        if (!handle.isWindowFull() && handle.isOver() == false) {
+            packetPtr newPacket = handle.newPacket();
             gettimeofday(&tv, nullptr);
-            newPacket.time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-            sendto(sock, newPacket.data, newPacket.len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
+            newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
+            sendto(sock, newPacket->data, newPacket->len, 0, (sockaddr *) &sout.sin_addr.s_addr, sizeof(sockaddr));
         }
 
 
@@ -184,21 +182,15 @@ int main(int argc, char **argv) {
                 int recLen = recvfrom(sock, recBuff, BUF_LEN, 0, nullptr, nullptr);
                 if (checkSum()) {
                     short ackFlag = (short)ntohs(*(short *) (recBuff + ACK_FLAG_POS));
-                    short ackSeq = (short)ntohs(*(short *) (recBuff + ACK_SEQ_POS));
                     // receive a valid or invalid packet
-                    if (ackFlag > 0 || ackFlag == ACK_INVALID_FLAG) {
-                        handle.recv_ack(ackFlag, askSeq);
-                    }
-                    // receiving finished
-                    if (ackFlag == ACK_FINISH_FLAG) {
-                        cout << "FINISH PACKET" << endl;
-                        break;
-                    }
-
+                    handle.recv_ack(ackFlag);
                 } else {
                     cout << "wrong ack packet" << endl;
                 }
-
+                if(handle.isOver()) {
+                    cout << "Sending over" << endl;
+                    break;
+                }
             }
 
         }
