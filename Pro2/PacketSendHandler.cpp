@@ -43,7 +43,7 @@ void PacketSendHandler::updateSeqInfo(short ackSeq) {
 }
 
 PacketSendHandler::PacketSendHandler(char* filePath) {
-	fin = ifstream(filePath, std::ios::binary | std::ios::in);
+	fin = &ifstream(filePath, std::ios::binary | std::ios::in);
 	
 	size_t length = strlen(filePath);
 	this->filePath = new char[length];

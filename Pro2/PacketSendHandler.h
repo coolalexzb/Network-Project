@@ -8,6 +8,9 @@
 #include <fstream> 
 #include <sys/time.h>
 #include <vector>
+#include <cstring>
+#include <stdlib.h>
+#include <arpa/inet.h>
 using namespace std;
 
 const int WINDOW_SIZE = 10;
@@ -47,7 +50,7 @@ private:
 	short seqFirst;							// The first seq Number of packet not sent successfully
     short seqNext;							// Next packet to be sent
 
-    ifstream fin;
+    ifstream& fin;
 	char* filePath;
     long fileLen;
     long sendingPos;
