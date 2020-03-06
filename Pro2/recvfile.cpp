@@ -14,8 +14,8 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include "PacketRecvHandler.h"
-
 #include "helper.h"
+
 /* a buffer to read data */
 char *buf;
 int BUF_LEN = 65535;

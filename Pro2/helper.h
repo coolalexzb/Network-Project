@@ -6,16 +6,29 @@
 #define PRO2_HELPER_H
 
 
-int DATA_PACKET_DATA_LENGTH = 10;
-int DATA_PACKET_CONTENT = 6;
-const int WINDOW_SIZE = 10;
-const int PACKET_HEADER_LENGTH = 10;
-const int PACKET_DATA_LENGTH = 10;
-const int PACKET_TIMEOUT_TIME = 10;
-int ACK_PACKET_LENGTH = 8;
-int DATA_PACKET_SEQ= 0;
-int DATA_PACKET_CKSUM = 2;
-int DATA_PACKET_LEN = 4;
-int ACK_PACKET_CKSUM_LENGTH = 2;
+extern int DATA_PACKET_DATA_LENGTH;
+extern int DATA_PACKET_CONTENT;
+extern int WINDOW_SIZE;
+extern const int PACKET_HEADER_LENGTH;
+extern const int PACKET_DATA_LENGTH;
+extern const int PACKET_TIMEOUT_TIME;
+extern int ACK_PACKET_LENGTH;
+extern int DATA_PACKET_SEQ;
+extern int DATA_PACKET_CKSUM;
+extern int DATA_PACKET_LEN;
+extern int ACK_PACKET_CKSUM_LENGTH;
+
+// ACK packet
+extern const int ACK_FLAG_POS;
+extern const int ACK_CHECKSUM_POS;
+
+// send packet
+extern const int SEND_SEQ_POS;
+extern const int SEND_CHECKSUM_POS;
+extern const int SEND_LENGTH_POS;
+
+// flag
+extern const int ACK_FINISH_FLAG;
+extern const int ACK_INVALID_FLAG;
 
 #endif //PRO2_HELPER_H

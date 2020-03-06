@@ -14,6 +14,7 @@
 #include <sys/time.h>
 #include <fcntl.h>
 #include "PacketSendHandler.h"
+#include "helper.h"
 
 
 /* simple client, takes two parameters, the server domain name,
@@ -22,18 +23,18 @@
 char *buf;
 int BUF_LEN = 65535;
 
-// ACK packet
-const int ACK_FLAG_POS = 0;
-const int ACK_CHECKSUM_POS = 2;
-
-// send packet
-const int SEND_SEQ_POS = 0;
-const int SEND_CHECKSUM_POS = 2;
-const int SEND_LENGTH_POS = 4;
-
-// flag
-const int ACK_FINISH_FLAG = -1;
-const int ACK_INVALID_FLAG = -2;
+//// ACK packet
+//const int ACK_FLAG_POS = 0;
+//const int ACK_CHECKSUM_POS = 2;
+//
+//// send packet
+//const int SEND_SEQ_POS = 0;
+//const int SEND_CHECKSUM_POS = 2;
+//const int SEND_LENGTH_POS = 4;
+//
+//// flag
+//const int ACK_FINISH_FLAG = -1;
+//const int ACK_INVALID_FLAG = -2;
 
 bool checkSum() {
 
