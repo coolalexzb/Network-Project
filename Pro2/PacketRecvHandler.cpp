@@ -50,12 +50,11 @@ short PacketRecvHandler::updateSeq(short seqNum) {
 }
 
 void PacketRecvHandler::init(char* filePath) {
-    file = open(filePath, O_FSYNC | O_RDWR | O_CREAT, 0777);
+    file = open(filePath, O_RDWR | O_CREAT, 0777);
     if (file < 0) {
         printf("File open failed!\n");
         return;
     }
-
     slideWindow = new packet[WINDOW_SIZE];
     for(int i = 0; i < WINDOW_SIZE; i++) {
         slideWindow[i].data = new char[DATA_PACKET_DATA_LENGTH + 1];

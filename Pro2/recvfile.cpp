@@ -2,17 +2,17 @@
 // Created by 郑博 on 2/25/20.
 //
 
-#include <stdlib.h>
+#include <errno.h>
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <netdb.h>
-#include <sys/time.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include "PacketRecvHandler.h"
 #include "helper.h"
 
@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     /* server socket address variables */
     struct sockaddr_in sin, addr;
     unsigned short server_port = atoi(argv[2]);
-
+    printf("%d \n", server_port);
     /* socket address variables for a connected client */
     socklen_t addr_len = sizeof(struct sockaddr_in);
 
@@ -81,6 +81,8 @@ int main(int argc, char **argv) {
 
     /* number of bytes sent/received */
     int count;
+
+    buf = (char *)malloc(BUF_LEN);
 
     // Creating socket file descriptor
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -101,27 +103,17 @@ int main(int argc, char **argv) {
     sin.sin_addr.s_addr = INADDR_ANY;
     sin.sin_port = htons(server_port);
 
-    buf = (char *)malloc(BUF_LEN);
-
     /* bind server socket to the address */
     if (bind(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0)      // bind server ip port to socket
     {
         perror("binding socket to address");
         abort();
     }
-
-    /* put the server socket in listen mode */
-    if (listen (sock, BACKLOG) < 0)                           // to listen status
-    {
-        perror ("listen on socket failed");
-        abort();
-    }
-
     /* make the socket non-blocking so send and recv will
-     return immediately if the socket is not ready.
-     this is important to ensure the server does not get
-     stuck when trying to send data to a socket that
-     has too much data to seand already.*/
+                    return immediately if the socket is not ready.
+                    this is important to ensure the server does not get
+                    stuck when trying to send data to a socket that
+                    has too much data to seand already.*/
     if (fcntl (sock, F_SETFL, O_NONBLOCK) < 0)
     {
         perror ("making socket non-blocking");
@@ -129,7 +121,7 @@ int main(int argc, char **argv) {
     }
 
     PacketRecvHandler packetHandler("./test");
-    printf("pre step ok!");
+    printf("pre step ok!\n");
     while(1)
     {
         FD_ZERO (&read_set); /* clear everything */               // file descriptor receive
@@ -158,7 +150,7 @@ int main(int argc, char **argv) {
         {
             if (FD_ISSET(sock, &read_set))                  /* check the server socket */
             {
-                //TODO
+                printf("recv\n");
                 count = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
                 printf("count: %d", count);
                 short ckSum = (short) ntohs(*(short *)(buf));
@@ -190,6 +182,7 @@ int main(int argc, char **argv) {
 //                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, addr_len);
 //                }
             }
+            printf("11111111\n");
         }
     }
 }

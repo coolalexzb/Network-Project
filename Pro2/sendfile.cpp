@@ -48,6 +48,12 @@ int main(int argc, char **argv) {
     char *subdir = strtok(argv[4], "/");
     char *filename = strtok(NULL, "/");
 
+    printf("recv_host: %s\n", recv_host);
+    printf("recv_port: %d\n", recv_port);
+    printf("subdir: %s\n", subdir);
+    printf("filename: %s\n", filename);
+
+
     /* server socket address variables */
     struct sockaddr_in sin, sout, addr;
 
@@ -74,7 +80,6 @@ int main(int argc, char **argv) {
         perror("socket creation failed");
         abort();
     }
-
     /* fill in the address of the server socket */
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
@@ -97,14 +102,6 @@ int main(int argc, char **argv) {
         perror("binding socket to address");
         abort();
     }
-
-    /* put the server socket in listen mode */
-    if (listen(sock, BACKLOG) < 0)                           // to listen status
-    {
-        perror("listen on socket failed");
-        abort();
-    }
-
     /* make the socket non-blocking so send and recv will
      return immediately if the socket is not ready.
      this is important to ensure the server does not get
@@ -127,35 +124,20 @@ int main(int argc, char **argv) {
             packetPtr resendPacket = handle.getUnAckPacket(currTime);
             gettimeofday(&tv, nullptr);
             resendPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-            sendto(sock, resendPacket->data, resendPacket->len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
-
-            /*
-            vector<packet *> timeoutPackets = handle.getNAckPacket(currTime);
-
-            // TODO ? auto exit after some retries (if the finish_ack is lost)
-            for (int i = 0; i < timeoutPackets.size(); i++) {
-                // TODO ???
-                packet tmpPacket = *(timeoutPackets)[i];
-                gettimeofday(&tv, nullptr);
-                tmpPacket.time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-                // TODO &???
-                sendto(sock, tmpPacket.data, tmpPacket.len, 0, (sockaddr *) &sout.sin_addr.s_addr, sizeof(sockaddr));
-            }*/
-
+            int cnt = sendto(sock, resendPacket->data, resendPacket->len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
+            printf("cnt: %d\n", cnt);
             checkTimeout = currTime;
         }
-
         // send more packets
         if (!handle.isWindowFull() && handle.isOver() == false) {
             packetPtr newPacket = handle.newPacket();
             gettimeofday(&tv, nullptr);
             newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-            sendto(sock, newPacket->data, newPacket->len, 0, (sockaddr *) &sout.sin_addr.s_addr, sizeof(sockaddr));
+            int count = sendto(sock, newPacket->data, newPacket->len, 0, (sockaddr *) &sout.sin_addr.s_addr, sizeof(sockaddr));
+            printf("count: %d\n", count);
         }
 
-
         FD_ZERO (&read_set); /* clear everything */               // file descriptor receive
-        // ???
         FD_ZERO (&write_set); /* clear everything */              // file descriptor send out
 
         FD_SET (sock, &read_set); /* put the listening socket in */
