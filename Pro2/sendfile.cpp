@@ -124,7 +124,8 @@ int main(int argc, char **argv) {
             packetPtr resendPacket = handle.getUnAckPacket(currTime);
             gettimeofday(&tv, nullptr);
             resendPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-            int cnt = sendto(sock, resendPacket->data, resendPacket->len, 0, (sockaddr *) sout.sin_addr.s_addr, sizeof(sockaddr));
+
+            int cnt = sendto(sock, resendPacket->data, resendPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
             printf("cnt: %d\n", cnt);
             checkTimeout = currTime;
         }
@@ -133,8 +134,25 @@ int main(int argc, char **argv) {
             packetPtr newPacket = handle.newPacket();
             gettimeofday(&tv, nullptr);
             newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-            int count = sendto(sock, newPacket->data, newPacket->len, 0, (sockaddr *) &sout.sin_addr.s_addr, sizeof(sockaddr));
-            printf("count: %d\n", count);
+
+			// packet examination before sending
+			printf("------------------PACKET-----------------\n");
+			short seqq = (short)ntohs(*(short *)(newPacket->data));
+			printf("seqNum:\t\t%hd\n", seqq);
+			printf("checksum:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + sizeof(short))));
+			if (seqq == -1) {
+				printf("totalPacketNum:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + PACKET_HEADER_LENGTH)));
+				printf("filePathLen:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + PACKET_HEADER_LENGTH + sizeof(short))));
+				printf("filePath:\t%s\n", newPacket->data + PACKET_HEADER_LENGTH + sizeof(short) * 2);
+			}
+			else {
+				printf("dataLen:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + PACKET_HEADER_LENGTH)));
+				printf("data: (may contain '\\n' sysbol)\n%s\n", newPacket->data + PACKET_HEADER_LENGTH + sizeof(short));
+			}
+			printf("-----------------------------------------\n");
+
+			int cnt = sendto(sock, newPacket->data, newPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
+            printf("cnt: %d\n", cnt);
         }
 
         FD_ZERO (&read_set); /* clear everything */               // file descriptor receive

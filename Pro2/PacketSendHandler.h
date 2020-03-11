@@ -19,10 +19,13 @@
 
 using namespace std;
 
-//const int WINDOW_SIZE = 10;
-//const int PACKET_HEADER_LENGTH = 10;
-//const int PACKET_DATA_LENGTH = 10;
-//const int PACKET_TIMEOUT_TIME = 10;
+extern const int PACKET_HEADER_POS;
+extern const int PACKET_CHECKSUM_POS;
+extern const int PACKET_PACKETNUM_POS;
+extern const int PACKET_FILEPATHLEN_POS;
+extern const int PACKET_FILEPATH_POS;
+extern const int PACKET_DATALEN_POS;
+extern const int PACKET_DATA_POS;
 
 struct packet {
     char* data;

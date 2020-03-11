@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
         abort ();
     }
 
-    PacketRecvHandler packetHandler("./test");
+    PacketRecvHandler packetHandler((char*)"./test");
     printf("pre step ok!\n");
     while(1)
     {

@@ -9,7 +9,7 @@ void PacketSendHandler::init() {
 	slideWindow = new packet[seqSize];
 	for (int i = 0; i < seqSize; i++) {
 		slideWindow[i].isAck = false;
-		slideWindow[i].data = new char[PACKET_HEADER_LENGTH + sizeof(short) + PACKET_DATA_LENGTH];
+		slideWindow[i].data = new char[PACKET_DATA_POS + PACKET_DATA_LENGTH];
 		slideWindow[i].len = 0;
 	}
 
@@ -18,6 +18,9 @@ void PacketSendHandler::init() {
 	seqNext = 0;
 	startSending = false;
 	finishSending = false;
+
+	// init file
+	fileLen = lseek(file, sendingPos, SEEK_END);
 	sendingPos = 0;
 }
 
@@ -64,41 +67,49 @@ packetPtr PacketSendHandler::newPacket()
 {
 	packetPtr thisPacket = &slideWindow[seqNext];
 
-	// for first packet, send filePath and fileLen
 	if (!startSending) {
-		startSending = true;
 
+		// for first packet, send filePath and fileLen
 		short packetNum = fileLen / PACKET_DATA_LENGTH;
 		if (fileLen % PACKET_DATA_LENGTH != 0) packetNum++;
-		*(short *)(thisPacket->data + PACKET_HEADER_LENGTH) = (short)htons(packetNum);
-
+		*(short *)(thisPacket->data + PACKET_PACKETNUM_POS) = (short)htons(packetNum);
+		
 		short filePathLen = strlen(filePath);
-		*(short *)(thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short)) = (short)htons(filePathLen); 
-		memcpy(thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short) * 2, filePath, filePathLen);
+		*(short *)(thisPacket->data + PACKET_FILEPATHLEN_POS) = (short)htons(filePathLen);
+		memcpy(thisPacket->data + PACKET_FILEPATH_POS, filePath, filePathLen);
+		thisPacket->len = PACKET_FILEPATH_POS + filePathLen;
 
-		thisPacket->len = PACKET_HEADER_LENGTH + sizeof(short) * 2 + filePathLen;
+		startSending = true;
 	}
 	else {
 		long lenToSend = fileLen - sendingPos;
 
-		// the last packet
 		if (lenToSend <= PACKET_DATA_LENGTH) {
-
-			*(short *)(thisPacket->data + PACKET_HEADER_LENGTH) = (short)htons(lenToSend);
+			
+			// the last packet
+			*(short *)(thisPacket->data + PACKET_DATALEN_POS) = (short)htons(lenToSend);
             lseek(file, sendingPos, SEEK_SET);
-            read(file, thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short), lenToSend);
-			thisPacket->len = PACKET_HEADER_LENGTH + sizeof(short) + lenToSend;
+            read(file, thisPacket->data + PACKET_DATA_POS, lenToSend);
+			thisPacket->len = PACKET_DATA_POS + lenToSend;
+
 			sendingPos = fileLen;
 			finishSending = true;
 		}
 		else {
-			*(short *)(thisPacket->data + PACKET_HEADER_LENGTH) = (short)htons(PACKET_DATA_LENGTH);
+
+			// common packet
+			*(short *)(thisPacket->data + PACKET_DATALEN_POS) = (short)htons(PACKET_DATA_LENGTH);
             lseek(file, sendingPos, SEEK_SET);
-            read(file, thisPacket->data + PACKET_HEADER_LENGTH + sizeof(short), PACKET_DATA_LENGTH);
-			thisPacket->len = PACKET_HEADER_LENGTH + sizeof(short) + PACKET_DATA_LENGTH;
+            read(file, thisPacket->data + PACKET_DATA_POS, PACKET_DATA_LENGTH);
+			thisPacket->len = PACKET_DATA_POS + PACKET_DATA_LENGTH;
+
 			sendingPos += PACKET_DATA_LENGTH;
 		}
 	}
+
+	short checksum = 128;
+	*(short *)(thisPacket->data + PACKET_HEADER_POS) = (short)htons(seqNext);
+	*(short *)(thisPacket->data + PACKET_CHECKSUM_POS) = (short)htons(checksum);
 
 	thisPacket->isAck = false;
 	thisPacket->seq = seqNext++;
