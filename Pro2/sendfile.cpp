@@ -1,6 +1,3 @@
-//
-// Created by 郑博 on 2/25/20.
-//
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -16,32 +13,25 @@
 #include "PacketSendHandler.h"
 #include "helper.h"
 
-
 /* simple client, takes two parameters, the server domain name,
    and the server port number */
 
 char *buf;
-int BUF_LEN = 65535;
+extern const int BUF_LEN;
 
-//// ACK packet
-//const int ACK_FLAG_POS = 0;
-//const int ACK_CHECKSUM_POS = 2;
-//
-//// send packet
-//const int SEND_SEQ_POS = 0;
-//const int SEND_CHECKSUM_POS = 2;
-//const int SEND_LENGTH_POS = 4;
-//
-//// flag
-//const int ACK_FINISH_FLAG = -1;
-//const int ACK_INVALID_FLAG = -2;
+extern const int PACKET_HEADER_POS;
+extern const int PACKET_CHECKSUM_POS;
+extern const int PACKET_PACKETNUM_POS;
+extern const int PACKET_FILEPATHLEN_POS;
+extern const int PACKET_FILEPATH_POS;
+extern const int PACKET_DATALEN_POS;
+extern const int PACKET_DATA_POS;
 
 bool checkSum() {
 
 }
 
 int main(int argc, char **argv) {
-
 
     char *recv_host = strtok(argv[2], ":");
     unsigned short recv_port = atoi(strtok(NULL, ":"));
@@ -52,7 +42,6 @@ int main(int argc, char **argv) {
     printf("recv_port: %d\n", recv_port);
     printf("subdir: %s\n", subdir);
     printf("filename: %s\n", filename);
-
 
     /* server socket address variables */
     struct sockaddr_in sin, sout, addr;
@@ -140,14 +129,14 @@ int main(int argc, char **argv) {
 			short seqq = (short)ntohs(*(short *)(newPacket->data));
 			printf("seqNum:\t\t%hd\n", seqq);
 			printf("checksum:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + sizeof(short))));
-			if (seqq == -1) {
-				printf("totalPacketNum:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + PACKET_HEADER_LENGTH)));
-				printf("filePathLen:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + PACKET_HEADER_LENGTH + sizeof(short))));
-				printf("filePath:\t%s\n", newPacket->data + PACKET_HEADER_LENGTH + sizeof(short) * 2);
+			if (seqq == 0) {
+				printf("totalPacketNum:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + 4)));
+				printf("filePathLen:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + 4 + sizeof(short))));
+				printf("filePath:\t%s\n", newPacket->data + 4 + sizeof(short) * 2);
 			}
 			else {
-				printf("dataLen:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + PACKET_HEADER_LENGTH)));
-				printf("data: (may contain '\\n' sysbol)\n%s\n", newPacket->data + PACKET_HEADER_LENGTH + sizeof(short));
+				printf("dataLen:\t%hd\n", (short)ntohs(*(short *)(newPacket->data + 4)));
+				printf("data: (may contain '\\n' sysbol)\n%s\n", newPacket->data + 4 + sizeof(short));
 			}
 			printf("-----------------------------------------\n");
 
@@ -182,7 +171,7 @@ int main(int argc, char **argv) {
                 char *recBuff;
                 int recLen = recvfrom(sock, recBuff, BUF_LEN, 0, nullptr, nullptr);
                 if (checkSum()) {
-                    short ackFlag = (short)ntohs(*(short *) (recBuff + ACK_FLAG_POS));
+                    short ackFlag = (short)ntohs(*(short *) (recBuff + PACKET_HEADER_POS));
                     // receive a valid or invalid packet
                     handle.recv_ack(ackFlag);
                 } else {

@@ -1,6 +1,3 @@
-//
-// Created by 郑博 on 3/1/20.
-//
 
 #ifndef PRO2_PACKETRECVHANDLER_H
 #define PRO2_PACKETRECVHANDLER_H
@@ -16,37 +13,45 @@
 
 using namespace std;
 
-//int WINDOW_SIZE = 64;
-//int DATA_PACKET_DATA_LENGTH = 10;
-//int DATA_PACKET_CONTENT = 6;
+extern const int WINDOW_SIZE;
+extern const int PACKET_DATA_LENGTH;
+extern const int PACKET_HEADER_POS;
+extern const int PACKET_CHECKSUM_POS;
+extern const int PACKET_PACKETNUM_POS;
+extern const int PACKET_FILEPATHLEN_POS;
+extern const int PACKET_FILEPATH_POS;
+extern const int PACKET_DATALEN_POS;
+extern const int PACKET_DATA_POS;
 
 struct packet {
-    char *data;
-    int seq;
-    bool isRecv;
+	char *data;
+	int seq;
+	bool isRecv;
 };
 
 class PacketRecvHandler {
 public:
-    PacketRecvHandler(char* filePath);
-    bool isOver();
-    short getNextSeq();
-    short recvPacket(char * packet, int length, bool isHeader);
-    short updateSeq(short seqNum);
-    int getPacketSize();
-    ~PacketRecvHandler();
+
+	PacketRecvHandler(char* filePath);
+	bool isOver();
+	short getNextSeq();
+	short recvPacket(char * packet, int length, bool isHeader);
+	short updateSeq(short seqNum);
+	int getPacketSize();
+	~PacketRecvHandler();
 
 private:
-    packet *slideWindow;                    // sliding window
-    short seqOldest;                          // The oldest seq Number of packet not sent successfully
-    short seqNext;                            // Next packet to be sent
-    short packetSize;
-    short packetCnt;
+	
+	packet *slideWindow;						// sliding window
+	short seqOldest;							// The oldest seq Number of packet not sent successfully
+	short seqNext;								// Next packet to be sent
+	short packetSize;
+	short packetCnt;
 
-    int file;
-    void init(char* filePath);
-    void wrote(char* packet);
+	int file;
+	void init(char* filePath);
+	void wrote(char* packet);
 
 };
 
-#endif //PRO2_PACKETRECVHANDLER_H
+#endif

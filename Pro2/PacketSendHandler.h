@@ -1,6 +1,4 @@
-//
-// Created by 郑博 on 3/1/20.
-//
+
 #ifndef PRO2_PACKETSENDHANDLER_H
 #define PRO2_PACKETSENDHANDLER_H
 
@@ -19,6 +17,9 @@
 
 using namespace std;
 
+extern const int WINDOW_SIZE;
+extern const int PACKET_DATA_LENGTH;
+extern const int PACKET_TIMEOUT_TIME;
 extern const int PACKET_HEADER_POS;
 extern const int PACKET_CHECKSUM_POS;
 extern const int PACKET_PACKETNUM_POS;
@@ -44,8 +45,8 @@ public:
 	~PacketSendHandler();
 
 	packetPtr newPacket();
-    packetPtr getUnAckPacket(time_t curTime);
-    void recv_ack(short ackSeq);
+	packetPtr getUnAckPacket(time_t curTime);
+	void recv_ack(short ackSeq);
 	bool isWindowFull();
 	bool isOver();
 
@@ -53,20 +54,20 @@ private:
 
 	packet *slideWindow;					// sliding window
 	int seqSize;							// sliding window sequence size
-    
+	
 	bool startSending;						// whether start sending
 	bool finishSending;						// whether finish sending
-	short seqFirst;							// The first seq Number of packet not sent successfully
-    short seqNext;							// Next packet to be sent
+	short seqFirst;							// first seq Number of packet not sent successfully
+	short seqNext;							// next packet to be sent
 
-    int file;
+	int file;
 	char* filePath;
-    long fileLen;
-    long sendingPos;
+	long fileLen;
+	long sendingPos;
 
-    void init();
+	void init();
 	bool isInWindow(short ackSeq);
 	void updateSeqInfo(short ackSeq);
 };
 
-#endif //PRO2_PACKETSENDHANDLER_H
+#endif

@@ -1,6 +1,3 @@
-//
-// Created by 郑博 on 3/1/20.
-//
 
 #include "PacketRecvHandler.h"
 
@@ -18,16 +15,16 @@ short PacketRecvHandler::getNextSeq() {
 
 short PacketRecvHandler::recvPacket(char * packet, int length, bool isHeader) {
     if(isHeader) {
-        packetSize = (short) ntohs(*(short *)(packet + 4));
+        packetSize = (short) ntohs(*(short *)(packet + PACKET_PACKETNUM_POS));
         return -1;
     }else {
-        short seqNum = (short) ntohs(*(short *)(packet));
+        short seqNum = (short) ntohs(*(short *)(packet + PACKET_HEADER_POS));
         if(slideWindow[seqNum].isRecv) {
             short retSeqNum = updateSeq(seqNum);
             return retSeqNum;
         }else {
-            short dateLen = (short) ntohs(*(short *)(packet + 4));
-            memcpy(slideWindow[seqNum].data, packet + DATA_PACKET_CONTENT, (int) (length - dateLen));
+            short dateLen = (short) ntohs(*(short *)(packet + PACKET_DATALEN_POS));
+            memcpy(slideWindow[seqNum].data, packet + PACKET_DATA_POS, (int) (length - dateLen));
             slideWindow[seqNum].isRecv = true;
             slideWindow[seqNum].seq = seqNum;
             wrote(packet);
@@ -57,7 +54,7 @@ void PacketRecvHandler::init(char* filePath) {
     }
     slideWindow = new packet[WINDOW_SIZE];
     for(int i = 0; i < WINDOW_SIZE; i++) {
-        slideWindow[i].data = new char[DATA_PACKET_DATA_LENGTH + 1];
+        slideWindow[i].data = new char[PACKET_DATA_LENGTH + 1];
         slideWindow[i].isRecv = false;
     }
     packetCnt = 0;
@@ -67,12 +64,12 @@ int PacketRecvHandler::getPacketSize(){
     return packetSize;
 }
 
-void PacketRecvHandler:: wrote(char* packet) {
-    lseek(file, (packetCnt - 1)* DATA_PACKET_DATA_LENGTH, SEEK_SET);
+void PacketRecvHandler::wrote(char* packet) {
+    lseek(file, (packetCnt - 1)* PACKET_DATA_LENGTH, SEEK_SET);
     if(isOver()) {
         write(file, packet, sizeof(packet));
     }else {
-        write(file, packet, DATA_PACKET_DATA_LENGTH);
+        write(file, packet, PACKET_DATA_LENGTH);
     }
 
 }

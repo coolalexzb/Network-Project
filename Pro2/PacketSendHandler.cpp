@@ -1,6 +1,4 @@
-//
-// Created by 郑博 on 3/1/20.
-//
+
 #include "PacketSendHandler.h"
 
 void PacketSendHandler::init() {
@@ -88,8 +86,8 @@ packetPtr PacketSendHandler::newPacket()
 			
 			// the last packet
 			*(short *)(thisPacket->data + PACKET_DATALEN_POS) = (short)htons(lenToSend);
-            lseek(file, sendingPos, SEEK_SET);
-            read(file, thisPacket->data + PACKET_DATA_POS, lenToSend);
+			lseek(file, sendingPos, SEEK_SET);
+			read(file, thisPacket->data + PACKET_DATA_POS, lenToSend);
 			thisPacket->len = PACKET_DATA_POS + lenToSend;
 
 			sendingPos = fileLen;
@@ -99,8 +97,8 @@ packetPtr PacketSendHandler::newPacket()
 
 			// common packet
 			*(short *)(thisPacket->data + PACKET_DATALEN_POS) = (short)htons(PACKET_DATA_LENGTH);
-            lseek(file, sendingPos, SEEK_SET);
-            read(file, thisPacket->data + PACKET_DATA_POS, PACKET_DATA_LENGTH);
+			lseek(file, sendingPos, SEEK_SET);
+			read(file, thisPacket->data + PACKET_DATA_POS, PACKET_DATA_LENGTH);
 			thisPacket->len = PACKET_DATA_POS + PACKET_DATA_LENGTH;
 
 			sendingPos += PACKET_DATA_LENGTH;

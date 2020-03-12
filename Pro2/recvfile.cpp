@@ -1,6 +1,3 @@
-//
-// Created by 郑博 on 2/25/20.
-//
 
 #include <errno.h>
 #include <stdio.h>
@@ -18,25 +15,27 @@
 
 /* a buffer to read data */
 char *buf;
-int BUF_LEN = 65535;
-//int ACK_PACKET_LENGTH = 8;
-//int ACK_NO_VALUE_FLAG = -1;
-//int PacketNum = 0;
-//int DATA_PACKET_SEQ= 0;
-//int DATA_PACKET_CKSUM = 2;
-//int DATA_PACKET_LEN = 4;
-//int ACK_PACKET_CKSUM_LENGTH = 2;
+extern const int BUF_LEN;
+
+extern const int PACKET_HEADER_POS;
+extern const int PACKET_CHECKSUM_POS;
+extern const int PACKET_PACKETNUM_POS;
+extern const int PACKET_FILEPATHLEN_POS;
+extern const int PACKET_FILEPATH_POS;
+extern const int PACKET_DATALEN_POS;
+extern const int PACKET_DATA_POS;
+
+int ACK_PACKET_LENGTH = 8;
 
 bool ackFinished = false;
 bool headerFlag = true;
-
 
 bool checksum(unsigned short ckSum, int recvLen)
 {
     int index = 0;
     unsigned short sum  = 0;
-    while(index >= DATA_PACKET_SEQ && index < recvLen) {
-        if(index >= DATA_PACKET_CKSUM && index < DATA_PACKET_LEN) {
+    while(index >= PACKET_HEADER_POS && index < recvLen) {
+        if(index >= PACKET_CHECKSUM_POS && index < PACKET_DATALEN_POS) {
             continue;
         }
         sum += (unsigned short)buf[index];
@@ -53,8 +52,7 @@ unsigned short generateCkSum(char * buf) {
 void generateAck(int ackNum, char* buf, bool flag) {
     *(unsigned short *) (buf) = (unsigned short) htons(ackNum);
     unsigned short ckSum = generateCkSum(buf);
-    *(unsigned short *) (buf + ACK_PACKET_CKSUM_LENGTH) = (unsigned short) htons(ckSum);
-
+    *(unsigned short *) (buf + PACKET_CHECKSUM_POS) = (unsigned short) htons(ckSum);
 }
 
 /* simple server, takes one parameter, the server port number */
