@@ -32,7 +32,7 @@ bool ackFinished = false;
 bool headerFlag = true;
 
 unsigned short generateCkSum(char * buf, int recvLen) {
-    printf("recvLen==: %d\n", recvLen);
+    //printf("recvLen==: %d\n", recvLen);
     int index = 0;
     unsigned short sum  = 0;
     while(index >= PACKET_HEADER_POS && index < recvLen) {
@@ -41,13 +41,16 @@ unsigned short generateCkSum(char * buf, int recvLen) {
             continue;
         }
         sum += (unsigned short)buf[index];
+		//printf("%d\n%hd\t\%hd\n", index, (unsigned short)buf[index], (short)buf[index]);
         index++;
     }
+	//printf("\n");
     return sum;
 }
 
 bool checksum(unsigned short ckSum, char* buf, int recvLen)
 {
+	//printf("recvLen*:  %d\n", recvLen);
     unsigned short sum = generateCkSum(buf, recvLen);
     printf("ckSum: %d\n", ckSum);
     printf("ckSum: %d\n", sum);
@@ -157,6 +160,7 @@ int main(int argc, char **argv) {
                 count = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
                 int recvLen = count;
                 printf("count:  %d\n", count);
+				//printf("recvLen1:  %d\n", recvLen);
 
                 printf("------------------PACKET-----------------\n");
                 short seqq = (short)ntohs(*(short *)(buf));
@@ -175,19 +179,16 @@ int main(int argc, char **argv) {
 
                 short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
 
+				//printf("recvLen2:  %d\n", recvLen);
                 short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+				//printf("recvLen3:  %d\n", recvLen);
                 printf("ackSeqNum: %d\n", ackSeqNum);
+				//printf("seqNum:\t\t%hd\n", (short)ntohs(*(short *)buf));
                 if(packetHandler.isOver()) {
                     ackFinished = true;
                 }
-                generateAck(ackSeqNum, buf, ackFinished);
-                printf("ackbuf:  %s\n", buf + PACKET_CHECKSUM_POS);
-                int num = sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
-                printf("num:  %d\n", num);
-                if(headerFlag) {
-                    headerFlag = false;
-                }
-
+				//printf("recvLen4:  %d\n", recvLen);
+				//printf("recvLen5:  %d\n", recvLen);
                 if(checksum(ckSum, buf, recvLen)) {
                     int ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
                     if(packetHandler.isOver()) {

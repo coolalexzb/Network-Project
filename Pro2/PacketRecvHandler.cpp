@@ -36,7 +36,7 @@ short PacketRecvHandler::recvPacket(char * packet, int length, bool isHeader) {
 }
 
 short PacketRecvHandler::updateSeq(short seqNum) {
-    for(short i = seqOldest + 1; i <= seqNum; i++) {
+    for(short i = seqOldest; i <= seqNum; i++) {
         if(slideWindow[i].isRecv) {
             seqOldest += 1;
         }else {
@@ -58,6 +58,7 @@ void PacketRecvHandler::init(char* filePath) {
         slideWindow[i].isRecv = false;
     }
     packetCnt = 0;
+	seqOldest = 0;
 }
 
 int PacketRecvHandler::getPacketSize(){

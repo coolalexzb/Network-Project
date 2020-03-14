@@ -30,15 +30,17 @@ extern const int PACKET_DATA_POS;
 unsigned short generateCkSum(char* buf, int packetLen) {
     int index = 0;
     unsigned short sum  = 0;
-    printf("packetLen==: %d\n", packetLen);
+    //printf("packetLen==: %d\n", packetLen);
     while(index >= PACKET_HEADER_POS && index < packetLen) {
         if(index >= PACKET_CHECKSUM_POS && index < PACKET_DATALEN_POS) {
             index++;
             continue;
         }
         sum += (unsigned short)buf[index];
-        index++;
-    }
+		//printf("%d\n%hd\t\%hd\n", index, (unsigned short)buf[index], (short)buf[index]);
+		index++;
+	}
+	//printf("\n");
     return sum;
 }
 
