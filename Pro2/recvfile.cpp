@@ -24,34 +24,39 @@ extern const int PACKET_FILEPATHLEN_POS;
 extern const int PACKET_FILEPATH_POS;
 extern const int PACKET_DATALEN_POS;
 extern const int PACKET_DATA_POS;
+extern const int ACK_NO_VALUE_FLAG;
 
 int ACK_PACKET_LENGTH = 8;
 
 bool ackFinished = false;
 bool headerFlag = true;
 
-bool checksum(unsigned short ckSum, int recvLen)
-{
+unsigned short generateCkSum(char * buf, int recvLen) {
+    printf("recvLen==: %d\n", recvLen);
     int index = 0;
     unsigned short sum  = 0;
     while(index >= PACKET_HEADER_POS && index < recvLen) {
         if(index >= PACKET_CHECKSUM_POS && index < PACKET_DATALEN_POS) {
+            index++;
             continue;
         }
         sum += (unsigned short)buf[index];
         index++;
     }
+    return sum;
+}
 
+bool checksum(unsigned short ckSum, char* buf, int recvLen)
+{
+    unsigned short sum = generateCkSum(buf, recvLen);
+    printf("ckSum: %d\n", ckSum);
+    printf("ckSum: %d\n", sum);
     return ckSum == sum;
 }
 
-unsigned short generateCkSum(char * buf) {
-    return 0;
-}
-
 void generateAck(int ackNum, char* buf, bool flag) {
-    *(unsigned short *) (buf) = (unsigned short) htons(ackNum);
-    unsigned short ckSum = generateCkSum(buf);
+    *(short *) (buf) = (short) htons(ackNum);
+    unsigned short ckSum = generateCkSum(buf, ACK_PACKET_LENGTH);
     *(unsigned short *) (buf + PACKET_CHECKSUM_POS) = (unsigned short) htons(ckSum);
 }
 
@@ -112,13 +117,13 @@ int main(int argc, char **argv) {
                     this is important to ensure the server does not get
                     stuck when trying to send data to a socket that
                     has too much data to seand already.*/
-    if (fcntl (sock, F_SETFL, O_NONBLOCK) < 0)
-    {
-        perror ("making socket non-blocking");
-        abort ();
-    }
+//    if (fcntl (sock, F_SETFL, O_NONBLOCK) < 0)
+//    {
+//        perror ("making socket non-blocking");
+//        abort ();
+//    }
 
-    PacketRecvHandler packetHandler((char*)"./test");
+    PacketRecvHandler packetHandler((char*)"./output");
     printf("pre step ok!\n");
     while(1)
     {
@@ -150,37 +155,55 @@ int main(int argc, char **argv) {
             {
                 printf("recv\n");
                 count = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
-                printf("count: %d", count);
-                short ckSum = (short) ntohs(*(short *)(buf));
+                int recvLen = count;
+                printf("count:  %d\n", count);
 
-                int ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+                printf("------------------PACKET-----------------\n");
+                short seqq = (short)ntohs(*(short *)(buf));
+                printf("seqNum:\t\t%hd\n", seqq);
+                printf("checksum:\t%hd\n", (short)ntohs(*(short *)(buf + sizeof(short))));
+                if (seqq == 0) {
+                    printf("totalPacketNum:\t%hd\n", (short)ntohs(*(short *)(buf + 4)));
+                    printf("filePathLen:\t%hd\n", (short)ntohs(*(short *)(buf + 4 + sizeof(short))));
+                    printf("filePath:\t%s\n", buf + 4 + sizeof(short) * 2);
+                }
+                else {
+                    printf("dataLen:\t%hd\n", (short)ntohs(*(short *)(buf + 4)));
+                    printf("data: (may contain '\\n' sysbol)\n%s\n", buf + 4 + sizeof(short));
+                }
+                printf("-----------------------------------------\n");
+
+                short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
+
+                short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+                printf("ackSeqNum: %d\n", ackSeqNum);
                 if(packetHandler.isOver()) {
                     ackFinished = true;
                 }
                 generateAck(ackSeqNum, buf, ackFinished);
-                printf("buf:  %s", buf);
-                sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, addr_len);
+                printf("ackbuf:  %s\n", buf + PACKET_CHECKSUM_POS);
+                int num = sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
+                printf("num:  %d\n", num);
                 if(headerFlag) {
                     headerFlag = false;
                 }
 
-//                if(checksum(ckSum, count)) {
-//                    int ackSeqNum = packetHandler->recvPacket(buf, count, headerFlag);
-//                    if(packetHandler->isOver()) {
-//                        ackFinished = true;
-//                    }
-//                    generateAck(ackSeqNum, buf, ackFinished);
-//                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, addr_len);
-//                    if(headerFlag) {
-//                        headerFlag = false;
-//                    }
-//                }else {
-//                    printf("recv failed\n");
-//                    generateAck(ACK_NO_VALUE_FLAG, buf, ackFinished);
-//                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, addr_len);
-//                }
+                if(checksum(ckSum, buf, recvLen)) {
+                    int ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+                    if(packetHandler.isOver()) {
+                        ackFinished = true;
+                    }
+                    generateAck(ackSeqNum, buf, ackFinished);
+                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
+                    if(headerFlag) {
+                        headerFlag = false;
+                    }
+                }else {
+                    printf("recv failed\n");
+                    generateAck(ACK_NO_VALUE_FLAG, buf, ackFinished);
+                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
+                }
             }
-            printf("11111111\n");
         }
     }
 }

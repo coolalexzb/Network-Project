@@ -27,6 +27,28 @@ extern const int PACKET_FILEPATH_POS;
 extern const int PACKET_DATALEN_POS;
 extern const int PACKET_DATA_POS;
 
+unsigned short generateCkSum(char* buf, int packetLen) {
+    int index = 0;
+    unsigned short sum  = 0;
+    printf("packetLen==: %d\n", packetLen);
+    while(index >= PACKET_HEADER_POS && index < packetLen) {
+        if(index >= PACKET_CHECKSUM_POS && index < PACKET_DATALEN_POS) {
+            index++;
+            continue;
+        }
+        sum += (unsigned short)buf[index];
+        index++;
+    }
+    return sum;
+}
+
+//bool checksum(unsigned short ckSum, char* buf, int recvLen)
+//{
+//    unsigned short sum = generateCkSum(buf, recvLen);
+//    printf("ckSum: %d\n", ckSum);
+//    printf("ckSum: %d\n", sum);
+//    return ckSum == sum;
+//}
 bool checkSum() {
 
 }
@@ -73,7 +95,7 @@ int main(int argc, char **argv) {
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = INADDR_ANY;
-    sin.sin_port = htons(recv_port);
+    sin.sin_port = htons(0);
 
     // init receiver address info
     memset(&sout, 0, sizeof(sout));
@@ -96,10 +118,10 @@ int main(int argc, char **argv) {
      this is important to ensure the server does not get
      stuck when trying to send data to a socket that
      has too much data to send already.*/
-    if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
-        perror("making socket non-blocking");
-        abort();
-    }
+//    if (fcntl(sock, F_SETFL, O_NONBLOCK) < 0) {
+//        perror("making socket non-blocking");
+//        abort();
+//    }
 
     timeval tv;
     gettimeofday(&tv, nullptr);
@@ -123,6 +145,10 @@ int main(int argc, char **argv) {
             packetPtr newPacket = handle.newPacket();
             gettimeofday(&tv, nullptr);
             newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
+
+            unsigned short checksum = generateCkSum(newPacket->data, newPacket->len);
+            printf("newPacket->len: %d\n", newPacket->len);
+            *(short *)(newPacket->data + PACKET_CHECKSUM_POS) = (short)htons(checksum);
 
 			// packet examination before sending
 			printf("------------------PACKET-----------------\n");

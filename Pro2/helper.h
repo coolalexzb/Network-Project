@@ -15,6 +15,7 @@ const int PACKET_FILEPATHLEN_POS = 6;
 const int PACKET_FILEPATH_POS = 8;
 const int PACKET_DATALEN_POS = 4;
 const int PACKET_DATA_POS = 6;
+const int ACK_NO_VALUE_FLAG = -1;
 
 // buffer
 const int BUF_LEN = 65535;
