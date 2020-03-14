@@ -15,6 +15,7 @@
 
 /* a buffer to read data */
 char *buf;
+char* sendbuf;
 extern const int BUF_LEN;
 
 extern const int PACKET_HEADER_POS;
@@ -31,7 +32,7 @@ int ACK_PACKET_LENGTH = 8;
 bool ackFinished = false;
 bool headerFlag = true;
 
-unsigned short generateCkSum(char * buf, int recvLen) {
+unsigned short generateCkSum(char * buffer, int recvLen) {
     //printf("recvLen==: %d\n", recvLen);
     int index = 0;
     unsigned short sum  = 0;
@@ -40,27 +41,26 @@ unsigned short generateCkSum(char * buf, int recvLen) {
             index++;
             continue;
         }
-        sum += (unsigned short)buf[index];
-		//printf("%d\n%hd\t\%hd\n", index, (unsigned short)buf[index], (short)buf[index]);
+        sum += (unsigned short)buffer[index];
+		//printf("%d\n%hd\t\%hd\n", index, (unsigned short)buffer[index], (short)buffer[index]);
         index++;
     }
 	//printf("\n");
     return sum;
 }
 
-bool checksum(unsigned short ckSum, char* buf, int recvLen)
+bool checksum(unsigned short ckSum, char* buffer, int recvLen)
 {
-	//printf("recvLen*:  %d\n", recvLen);
-    unsigned short sum = generateCkSum(buf, recvLen);
+    unsigned short sum = generateCkSum(buffer, recvLen);
     printf("ckSum: %d\n", ckSum);
     printf("ckSum: %d\n", sum);
     return ckSum == sum;
 }
 
-void generateAck(int ackNum, char* buf, bool flag) {
-    *(short *) (buf) = (short) htons(ackNum);
-    unsigned short ckSum = generateCkSum(buf, ACK_PACKET_LENGTH);
-    *(unsigned short *) (buf + PACKET_CHECKSUM_POS) = (unsigned short) htons(ckSum);
+void generateAck(int ackNum, char* buffer, bool flag) {
+    *(short *) (buffer) = (short) htons(ackNum);
+    unsigned short ckSum = generateCkSum(buffer, ACK_PACKET_LENGTH);
+    *(unsigned short *) (buffer + PACKET_CHECKSUM_POS) = (unsigned short) htons(ckSum);
 }
 
 /* simple server, takes one parameter, the server port number */
@@ -89,6 +89,7 @@ int main(int argc, char **argv) {
     int count;
 
     buf = (char *)malloc(BUF_LEN);
+    sendbuf = (char *)malloc(BUF_LEN);
 
     // Creating socket file descriptor
     if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -126,7 +127,7 @@ int main(int argc, char **argv) {
 //        abort ();
 //    }
 
-    PacketRecvHandler packetHandler((char*)"./output");
+    PacketRecvHandler packetHandler;
     printf("pre step ok!\n");
     while(1)
     {
@@ -156,6 +157,7 @@ int main(int argc, char **argv) {
         {
             if (FD_ISSET(sock, &read_set))                  /* check the server socket */
             {
+                printf("===========================\n");
                 printf("recv\n");
                 count = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
                 int recvLen = count;
@@ -179,31 +181,39 @@ int main(int argc, char **argv) {
 
                 short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
 
-				//printf("recvLen2:  %d\n", recvLen);
-                short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
-				//printf("recvLen3:  %d\n", recvLen);
-                printf("ackSeqNum: %d\n", ackSeqNum);
-				//printf("seqNum:\t\t%hd\n", (short)ntohs(*(short *)buf));
-                if(packetHandler.isOver()) {
-                    ackFinished = true;
-                }
-				//printf("recvLen4:  %d\n", recvLen);
-				//printf("recvLen5:  %d\n", recvLen);
+//                short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+//
+//                printf("ackSeqNum: %d\n", ackSeqNum);
+
+//                if(packetHandler.isOver()) {
+//                    ackFinished = true;
+//                }
+
+//                generateAck(ackSeqNum, buf, ackFinished);
+//                int num = sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
+//                printf("num:  %d\n", num);
+//                if(headerFlag) {
+//                    headerFlag = false;
+//                }
+
                 if(checksum(ckSum, buf, recvLen)) {
-                    int ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+                    short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
+                    printf("ackSeqNum: %d\n", ackSeqNum);
                     if(packetHandler.isOver()) {
                         ackFinished = true;
                     }
-                    generateAck(ackSeqNum, buf, ackFinished);
-                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
+                    generateAck(ackSeqNum, sendbuf, ackFinished);
+                    int num = sendto(sock, sendbuf, ACK_PACKET_LENGTH, 0, (sockaddr *) &addr, sizeof(addr));
+                    printf("num:  %d\n", num);
                     if(headerFlag) {
                         headerFlag = false;
                     }
                 }else {
                     printf("recv failed\n");
-                    generateAck(ACK_NO_VALUE_FLAG, buf, ackFinished);
-                    sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
+                    generateAck(ACK_NO_VALUE_FLAG, sendbuf, ackFinished);
+                    sendto(sock, sendbuf, ACK_PACKET_LENGTH, 0, (sockaddr *) &addr, sizeof(addr));
                 }
+                printf("===========================\n");
             }
         }
     }

@@ -17,6 +17,7 @@
    and the server port number */
 
 char *buf;
+char *recBuff;
 extern const int BUF_LEN;
 
 extern const int PACKET_HEADER_POS;
@@ -44,15 +45,12 @@ unsigned short generateCkSum(char* buf, int packetLen) {
     return sum;
 }
 
-//bool checksum(unsigned short ckSum, char* buf, int recvLen)
-//{
-//    unsigned short sum = generateCkSum(buf, recvLen);
-//    printf("ckSum: %d\n", ckSum);
-//    printf("ckSum: %d\n", sum);
-//    return ckSum == sum;
-//}
-bool checkSum() {
-
+bool checksum(unsigned short ckSum, char* buf, int recvLen)
+{
+    unsigned short sum = generateCkSum(buf, recvLen);
+    printf("ckSum: %d\n", ckSum);
+    printf("ckSum: %d\n", sum);
+    return ckSum == sum;
 }
 
 int main(int argc, char **argv) {
@@ -106,6 +104,7 @@ int main(int argc, char **argv) {
     sout.sin_port = htons(recv_port);
 
     buf = (char *) malloc(BUF_LEN);
+    recBuff = (char *) malloc(BUF_LEN);
 
     PacketSendHandler handle(filename);
 
@@ -196,9 +195,12 @@ int main(int argc, char **argv) {
         {
             if (FD_ISSET(sock, &read_set))                  /* check the server socket */
             {
-                char *recBuff;
-                int recLen = recvfrom(sock, recBuff, BUF_LEN, 0, nullptr, nullptr);
-                if (checkSum()) {
+
+                int recvLen = recvfrom(sock, recBuff, BUF_LEN, 0, (struct sockaddr *) &sout, &addr_len);
+                printf("recvLen:  %d\n", recvLen);
+                short ckSum = (short) ntohs(*(short *)(recBuff + PACKET_CHECKSUM_POS));
+
+                if (checksum(ckSum, recBuff, recvLen)) {
                     short ackFlag = (short)ntohs(*(short *) (recBuff + PACKET_HEADER_POS));
                     // receive a valid or invalid packet
                     handle.recv_ack(ackFlag);

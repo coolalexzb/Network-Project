@@ -23,7 +23,7 @@ extern const int PACKET_FILEPATH_POS;
 extern const int PACKET_DATALEN_POS;
 extern const int PACKET_DATA_POS;
 
-struct packet {
+struct Packet {
 	char *data;
 	int seq;
 	bool isRecv;
@@ -32,7 +32,7 @@ struct packet {
 class PacketRecvHandler {
 public:
 
-	PacketRecvHandler(char* filePath);
+	PacketRecvHandler();
 	bool isOver();
 	short getNextSeq();
 	short recvPacket(char * packet, int length, bool isHeader);
@@ -41,16 +41,17 @@ public:
 	~PacketRecvHandler();
 
 private:
-	
-	packet *slideWindow;						// sliding window
+
+    Packet *slideWindow;						// sliding window
 	short seqOldest;							// The oldest seq Number of packet not sent successfully
 	short seqNext;								// Next packet to be sent
 	short packetSize;
 	short packetCnt;
+    char* filePath;
 
 	int file;
-	void init(char* filePath);
-	void wrote(char* packet);
+	void init();
+	void wrote(Packet packet);
 
 };
 
