@@ -3,9 +3,8 @@
 
 void PacketSendHandler::init() {
 	// init slideWindow
-	seqSize = WINDOW_SIZE * 2;
-	slideWindow = new packet[seqSize];
-	for (int i = 0; i < seqSize; i++) {
+	slideWindow = new packet[WINDOW_SIZE];
+	for (int i = 0; i < WINDOW_SIZE; i++) {
 		slideWindow[i].isAck = false;
 		slideWindow[i].data = new char[PACKET_DATA_POS + PACKET_DATA_LENGTH];
 		slideWindow[i].len = 0;
@@ -23,23 +22,17 @@ void PacketSendHandler::init() {
 }
 
 bool PacketSendHandler::isInWindow(short ackSeq) {
-	if (seqNext >= seqFirst) {
-		return (seqFirst <= ackSeq) && (ackSeq < seqNext);
-	}
-	else {
-		return ((0 <= ackSeq) && (ackSeq < seqNext)) || ((seqFirst <= ackSeq) && (ackSeq < seqSize));
-	}
+	return (seqFirst <= ackSeq) && (ackSeq < seqNext);
 }
 
 void PacketSendHandler::updateSeqInfo(short ackSeq) {
-	while (seqFirst != (ackSeq+1) % seqSize) {
-		slideWindow[seqFirst++].isAck = true;
-		seqFirst %= seqSize;
+	while (seqFirst <= ackSeq) {
+		short index = seqFirst++ % WINDOW_SIZE;
+		slideWindow[index].isAck = true;
 	}
 }
 
 PacketSendHandler::PacketSendHandler(char* filePath) {
-
     file = open(filePath, O_FSYNC | O_RDWR | O_CREAT, 0777);
     if (file < 0) {
         printf("File open failed!\n");
@@ -56,14 +49,15 @@ PacketSendHandler::PacketSendHandler(char* filePath) {
 PacketSendHandler::~PacketSendHandler() {
     close(file);
 
-	for (int i = 0; i < seqSize; i++)
+	for (int i = 0; i < WINDOW_SIZE; i++)
 		delete slideWindow[i].data;
 	delete[] slideWindow;
 }
 
 packetPtr PacketSendHandler::newPacket()
 {
-	packetPtr thisPacket = &slideWindow[seqNext];
+	packetPtr thisPacket = &slideWindow[seqNext % WINDOW_SIZE];
+	*(short *)(thisPacket->data + PACKET_HEADER_POS) = (short)htons(seqNext);
 
 	if (!startSending) {
 
@@ -105,25 +99,20 @@ packetPtr PacketSendHandler::newPacket()
 		}
 	}
 
-	short checksum = 128;
-	*(short *)(thisPacket->data + PACKET_HEADER_POS) = (short)htons(seqNext);
+	short checksum = generateCkSum(thisPacket->data, thisPacket->len);
 	*(short *)(thisPacket->data + PACKET_CHECKSUM_POS) = (short)htons(checksum);
 
 	thisPacket->isAck = false;
 	thisPacket->seq = seqNext++;
-	seqNext %= seqSize;
 
 	return thisPacket;
 }
 
-packetPtr PacketSendHandler::getUnAckPacket(time_t curTime) {
-	packetPtr tmp;
-	
+packetPtr PacketSendHandler::getUnAckPacket(time_t curTime) {	
 	short seqFirst_copy = seqFirst;
-	while (seqFirst_copy != seqNext) {
-		tmp = &slideWindow[seqFirst_copy++];
+	while (seqFirst_copy < seqNext) {
+		packetPtr tmp = &slideWindow[seqFirst_copy++ % WINDOW_SIZE];
 		if (!tmp->isAck && (curTime - tmp->time) > PACKET_TIMEOUT_TIME) return tmp;
-		seqFirst_copy %= seqSize;
 	}
 	
 	return nullptr;
@@ -131,24 +120,31 @@ packetPtr PacketSendHandler::getUnAckPacket(time_t curTime) {
 
 void PacketSendHandler::recv_ack(short ackSeq) {
 	if (isInWindow(ackSeq)) {
-		packetPtr thisPacket = &slideWindow[ackSeq];
+		packetPtr thisPacket = &slideWindow[ackSeq % WINDOW_SIZE];
 
 		// duplication check
 		if (thisPacket->isAck) {
-			printf("[recv ack] DUPLICATED\n");
+			printf("[recv ack] packect#%hd DUPLICATED\n", ackSeq);
 		}
 		else {
-			printf("[recv ack] ACCEPTED\n");
+			if (ackSeq == 0) {
+				printf("[recv ack] packect#%05hd ACCEPTED\tHeader packet RECEIVED\n", ackSeq);
+			}
+			else {
+				long sendingOffset = ackSeq * PACKET_DATA_LENGTH;
+				if (sendingOffset > fileLen) sendingOffset = fileLen;
+				printf("[recv ack] packect#%05hd ACCEPTED\t%07ld bytes RECEIVED\n", ackSeq, sendingOffset);
+			}
 			updateSeqInfo(ackSeq);
 		}
 	}
 	else {
-		printf("[recv ack] IGNORED\n");
+		printf("[recv ack] packect#%hd IGNORED\n", ackSeq);
 	}
 }
 
 bool PacketSendHandler::isWindowFull() {
-	return abs(seqNext - seqFirst) == seqSize;
+	return seqNext - seqFirst == WINDOW_SIZE;
 }
 
 bool PacketSendHandler::isOver() {

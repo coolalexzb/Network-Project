@@ -2,13 +2,6 @@
 #ifndef PRO2_PACKETRECVHANDLER_H
 #define PRO2_PACKETRECVHANDLER_H
 
-#include <sys/time.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <arpa/inet.h>
 #include "helper.h"
 
 using namespace std;
@@ -25,7 +18,7 @@ extern const int PACKET_DATA_POS;
 
 struct Packet {
 	char *data;
-	int seq;
+	short seq;
 	bool isRecv;
 };
 
@@ -33,18 +26,22 @@ class PacketRecvHandler {
 public:
 
 	PacketRecvHandler();
+	~PacketRecvHandler();
+
 	bool isOver();
 	short getNextSeq();
-	short recvPacket(char * packet, int length, bool isHeader);
+	short recvPacket(char *packet, int length);
 	short updateSeq(short seqNum);
 	int getPacketSize();
-	~PacketRecvHandler();
 
 private:
 
     Packet *slideWindow;						// sliding window
-	short seqOldest;							// The oldest seq Number of packet not sent successfully
-	short seqNext;								// Next packet to be sent
+
+	bool startSending;							// whether start sending
+	
+	short seqOldest;							// oldest seq Number of packet not sent successfully
+	short seqNext;								// latest packet received
 	short packetSize;
 	short packetCnt;
     char* filePath;
@@ -52,7 +49,6 @@ private:
 	int file;
 	void init();
 	void wrote(Packet packet);
-
 };
 
 #endif

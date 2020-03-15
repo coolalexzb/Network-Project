@@ -1,21 +1,9 @@
 
-#include <errno.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
-#include <dirent.h>
 #include "PacketRecvHandler.h"
 #include "helper.h"
 
-/* a buffer to read data */
 char *buf;
-char* sendbuf;
+char *sendbuf;
 extern const int BUF_LEN;
 
 extern const int PACKET_HEADER_POS;
@@ -26,11 +14,7 @@ extern const int PACKET_FILEPATH_POS;
 extern const int PACKET_DATALEN_POS;
 extern const int PACKET_DATA_POS;
 extern const int ACK_NO_VALUE_FLAG;
-
-int ACK_PACKET_LENGTH = 8;
-
-bool ackFinished = false;
-bool headerFlag = true;
+extern const int ACK_PACKET_LENGTH;
 
 void generateAck(int ackNum, char* buffer, bool flag) {
     *(short *) (buffer) = (short) htons(ackNum);
@@ -44,7 +28,7 @@ int main(int argc, char **argv) {
     /* server socket address variables */
     struct sockaddr_in sin, addr;
     unsigned short server_port = atoi(argv[2]);
-    printf("%d \n", server_port);
+    printf("server port: %d \n", server_port);
     /* socket address variables for a connected client */
     socklen_t addr_len = sizeof(struct sockaddr_in);
 
@@ -60,9 +44,6 @@ int main(int argc, char **argv) {
     struct timeval time_out;
     int select_retval;
 
-    /* number of bytes sent/received */
-    int count;
-
     buf = (char *)malloc(BUF_LEN);
     sendbuf = (char *)malloc(BUF_LEN);
 
@@ -72,13 +53,6 @@ int main(int argc, char **argv) {
         abort();
     }
 
-//    /* set option so we can reuse the port number quickly after a restart */
-//    if (setsockopt (sock, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof (optval)) <0)
-//    {
-//        perror ("setting UDP socket option");
-//        abort ();
-//    }
-
     /* fill in the address of the server socket */
     memset(&sin, 0, sizeof(sin));
     sin.sin_family = AF_INET;
@@ -86,28 +60,17 @@ int main(int argc, char **argv) {
     sin.sin_port = htons(server_port);
 
     /* bind server socket to the address */
-    if (bind(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0)      // bind server ip port to socket
-    {
+    if (bind(sock, (struct sockaddr *) &sin, sizeof (sin)) < 0) {	// bind server ip port to socket
         perror("binding socket to address");
         abort();
     }
-    /* make the socket non-blocking so send and recv will
-                    return immediately if the socket is not ready.
-                    this is important to ensure the server does not get
-                    stuck when trying to send data to a socket that
-                    has too much data to seand already.*/
-//    if (fcntl (sock, F_SETFL, O_NONBLOCK) < 0)
-//    {
-//        perror ("making socket non-blocking");
-//        abort ();
-//    }
 
     PacketRecvHandler packetHandler;
     printf("pre step ok!\n");
     while(1)
     {
-        FD_ZERO (&read_set); /* clear everything */               // file descriptor receive
-        FD_ZERO (&write_set); /* clear everything */              // file descriptor send out
+        FD_ZERO (&read_set);				// file descriptor receive
+        FD_ZERO (&write_set);				// file descriptor send out
 
         FD_SET (sock, &read_set); /* put the listening socket in */
 
@@ -116,79 +79,33 @@ int main(int argc, char **argv) {
 
         /* invoke select, make sure to pass sock+1 !!! */
         select_retval = select(sock + 1, &read_set, &write_set, NULL, &time_out);    // cnt of variable socket
-        if (select_retval < 0)
-        {
+        if (select_retval < 0) {
             perror ("select failed");
             abort ();
         }
 
-        if (select_retval == 0)                                   // no var within timeout
-        {
+        if (select_retval == 0) {				// no var within timeout
             /* no descriptor ready, timeout happened */
             continue;
         }
 
-        if (select_retval > 0) /* at least one file descriptor is ready */
-        {
-            if (FD_ISSET(sock, &read_set))                  /* check the server socket */
-            {
-                printf("===========================\n");
-                printf("recv\n");
-                count = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
-                int recvLen = count;
-                printf("count:  %d\n", count);
-				//printf("recvLen1:  %d\n", recvLen);
+        if (select_retval > 0) {				/* at least one file descriptor is ready */
+            if (FD_ISSET(sock, &read_set)) {			/* check the server socket */
 
-                printf("------------------PACKET-----------------\n");
-                short seqq = (short)ntohs(*(short *)(buf));
-                printf("seqNum:\t\t%hd\n", seqq);
-                printf("checksum:\t%hd\n", (short)ntohs(*(short *)(buf + sizeof(short))));
-                if (seqq == 0) {
-                    printf("totalPacketNum:\t%hd\n", (short)ntohs(*(short *)(buf + 4)));
-                    printf("filePathLen:\t%hd\n", (short)ntohs(*(short *)(buf + 4 + sizeof(short))));
-                    printf("filePath:\t%s\n", buf + 4 + sizeof(short) * 2);
-                }
-                else {
-                    printf("dataLen:\t%hd\n", (short)ntohs(*(short *)(buf + 4)));
-                    printf("data: (may contain '\\n' sysbol)\n%s\n", buf + 4 + sizeof(short));
-                }
-                printf("-----------------------------------------\n");
+				int recvLen = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
+				packetExam(buf, recvLen);
 
                 short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
-
-//                short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
-//
-//                printf("ackSeqNum: %d\n", ackSeqNum);
-
-//                if(packetHandler.isOver()) {
-//                    ackFinished = true;
-//                }
-
-//                generateAck(ackSeqNum, buf, ackFinished);
-//                int num = sendto(sock, buf, ACK_PACKET_LENGTH, 0, (sockaddr *) &sin, sizeof(sin));
-//                printf("num:  %d\n", num);
-//                if(headerFlag) {
-//                    headerFlag = false;
-//                }
-
-                if(checksum(ckSum, buf, recvLen)) {
-                    short ackSeqNum = packetHandler.recvPacket(buf, count, headerFlag);
-                    printf("ackSeqNum: %d\n", ackSeqNum);
-                    if(packetHandler.isOver()) {
-                        ackFinished = true;
-                    }
-                    generateAck(ackSeqNum, sendbuf, ackFinished);
+				if (checksum(ckSum, buf, recvLen)) {
+                    short ackSeqNum = packetHandler.recvPacket(buf, recvLen);
+                    generateAck(ackSeqNum, sendbuf, packetHandler.isOver());
                     int num = sendto(sock, sendbuf, ACK_PACKET_LENGTH, 0, (sockaddr *) &addr, sizeof(addr));
-                    printf("num:  %d\n", num);
-                    if(headerFlag) {
-                        headerFlag = false;
-                    }
-                }else {
+                } 
+				else {
                     printf("recv failed\n");
-                    generateAck(ACK_NO_VALUE_FLAG, sendbuf, ackFinished);
+                    generateAck(ACK_NO_VALUE_FLAG, sendbuf, packetHandler.isOver());
                     sendto(sock, sendbuf, ACK_PACKET_LENGTH, 0, (sockaddr *) &addr, sizeof(addr));
                 }
-                printf("===========================\n");
             }
         }
     }

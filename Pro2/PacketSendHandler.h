@@ -2,17 +2,6 @@
 #ifndef PRO2_PACKETSENDHANDLER_H
 #define PRO2_PACKETSENDHANDLER_H
 
-#include <sys/time.h>
-#include <vector>
-#include <cstring>
-#include <stdlib.h>
-#include <arpa/inet.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <fcntl.h>
-#include <iostream>
 #include "helper.h"
 
 using namespace std;
@@ -53,7 +42,6 @@ public:
 private:
 
 	packet *slideWindow;					// sliding window
-	int seqSize;							// sliding window sequence size
 	
 	bool startSending;						// whether start sending
 	bool finishSending;						// whether finish sending
