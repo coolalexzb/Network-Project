@@ -13,9 +13,6 @@
 #include "PacketSendHandler.h"
 #include "helper.h"
 
-/* simple client, takes two parameters, the server domain name,
-   and the server port number */
-
 char *buf;
 char *recBuff;
 extern const int BUF_LEN;
@@ -27,31 +24,6 @@ extern const int PACKET_FILEPATHLEN_POS;
 extern const int PACKET_FILEPATH_POS;
 extern const int PACKET_DATALEN_POS;
 extern const int PACKET_DATA_POS;
-
-unsigned short generateCkSum(char* buf, int packetLen) {
-    int index = 0;
-    unsigned short sum  = 0;
-    //printf("packetLen==: %d\n", packetLen);
-    while(index >= PACKET_HEADER_POS && index < packetLen) {
-        if(index >= PACKET_CHECKSUM_POS && index < PACKET_DATALEN_POS) {
-            index++;
-            continue;
-        }
-        sum += (unsigned short)buf[index];
-		//printf("%d\n%hd\t\%hd\n", index, (unsigned short)buf[index], (short)buf[index]);
-		index++;
-	}
-	//printf("\n");
-    return sum;
-}
-
-bool checksum(unsigned short ckSum, char* buf, int recvLen)
-{
-    unsigned short sum = generateCkSum(buf, recvLen);
-    printf("ckSum: %d\n", ckSum);
-    printf("ckSum: %d\n", sum);
-    return ckSum == sum;
-}
 
 int main(int argc, char **argv) {
 

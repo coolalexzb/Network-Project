@@ -20,4 +20,8 @@ const int ACK_NO_VALUE_FLAG = -1;
 // buffer
 const int BUF_LEN = 65535;
 
+// checksum functions
+unsigned short generateCkSum(char* buf, int packetLen);
+bool checksum(unsigned short ckSum, char* buf, int packetLen);
+
 #endif

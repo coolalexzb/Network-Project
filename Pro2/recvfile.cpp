@@ -32,31 +32,6 @@ int ACK_PACKET_LENGTH = 8;
 bool ackFinished = false;
 bool headerFlag = true;
 
-unsigned short generateCkSum(char * buffer, int recvLen) {
-    //printf("recvLen==: %d\n", recvLen);
-    int index = 0;
-    unsigned short sum  = 0;
-    while(index >= PACKET_HEADER_POS && index < recvLen) {
-        if(index >= PACKET_CHECKSUM_POS && index < PACKET_DATALEN_POS) {
-            index++;
-            continue;
-        }
-        sum += (unsigned short)buffer[index];
-		//printf("%d\n%hd\t\%hd\n", index, (unsigned short)buffer[index], (short)buffer[index]);
-        index++;
-    }
-	//printf("\n");
-    return sum;
-}
-
-bool checksum(unsigned short ckSum, char* buffer, int recvLen)
-{
-    unsigned short sum = generateCkSum(buffer, recvLen);
-    printf("ckSum: %d\n", ckSum);
-    printf("ckSum: %d\n", sum);
-    return ckSum == sum;
-}
-
 void generateAck(int ackNum, char* buffer, bool flag) {
     *(short *) (buffer) = (short) htons(ackNum);
     unsigned short ckSum = generateCkSum(buffer, ACK_PACKET_LENGTH);
