@@ -93,13 +93,14 @@ int main(int argc, char **argv) {
             if (FD_ISSET(sock, &read_set)) {			/* check the server socket */
 
 				int recvLen = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
-				packetExam(buf, recvLen);
-
+				//packetExam(buf, recvLen);
+                //short seqNum = (short)ntohs(*(short *)(buf + PACKET_HEADER_POS));
                 short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
 				if (checksum(ckSum, buf, recvLen)) {
                     short ackSeqNum = packetHandler.recvPacket(buf, recvLen);
                     generateAck(ackSeqNum, sendbuf, packetHandler.isOver());
                     int num = sendto(sock, sendbuf, ACK_PACKET_LENGTH, 0, (sockaddr *) &addr, sizeof(addr));
+                    printf("ackSeqNum: %d\n", ackSeqNum);
                 } 
 				else {
                     printf("recv failed\n");

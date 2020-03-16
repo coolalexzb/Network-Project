@@ -31,7 +31,11 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
     }
 	else {
 		short seqNum = (short)ntohs(*(short *)(packet + PACKET_HEADER_POS));
-        if (slideWindow[seqNum % WINDOW_SIZE].isRecv && seqNum > seqOldest && seqNum < seqNext) {
+        printf("seqNum: %d\n", seqNum);
+        printf("seqOldest: %d\n", seqOldest);
+        printf("seqNext: %d\n", seqNext);
+        if (slideWindow[seqNum % WINDOW_SIZE].isRecv) {
+            //printf("enter into seqNum: %d\n", seqNum);
             return updateSeq(seqNum);
         }
 		else {
@@ -52,9 +56,12 @@ short PacketRecvHandler::updateSeq(short seqNum) {
     for (short i = seqOldest; i <= seqNext; i++) {
 		short index = i % WINDOW_SIZE;
         if (slideWindow[index].isRecv) {
-            seqOldest++;
+            if(seqOldest < seqNext) {
+                seqOldest++;
+            }
             slideWindow[index].isRecv = false;
-			memset(slideWindow[seqNum % WINDOW_SIZE].data, 0, PACKET_DATA_LENGTH);
+			//memset(slideWindow[seqNum % WINDOW_SIZE].data, 0, PACKET_DATA_LENGTH);
+            memset(slideWindow[index % WINDOW_SIZE].data, 0, PACKET_DATA_LENGTH);
         }
 		else {
             break;

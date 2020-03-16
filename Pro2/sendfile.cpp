@@ -84,22 +84,24 @@ int main(int argc, char **argv) {
         // check timeout packet
         gettimeofday(&tv, nullptr);
         time_t currTime = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-        if (currTime - checkTimeout > (time_out.tv_usec / 1000 + time_out.tv_sec * 1000)) {
-            packetPtr resendPacket = handle.getUnAckPacket(currTime);
+        packetPtr resendPacket = handle.getUnAckPacket(currTime);
+        if(resendPacket == nullptr) {
+            // send more packets
+            if (!handle.isWindowFull() && handle.isOver() == false) {
+                packetPtr newPacket = handle.newPacket();
+                gettimeofday(&tv, nullptr);
+                newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
+                int cnt = sendto(sock, newPacket->data, newPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
+
+                //packetExam(newPacket->data, cnt);
+            }
+        }else {
             gettimeofday(&tv, nullptr);
             resendPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
             int cnt = sendto(sock, resendPacket->data, resendPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
-            checkTimeout = currTime;
+            //checkTimeout = currTime;
         }
-        // send more packets
-        if (!handle.isWindowFull() && handle.isOver() == false) {
-            packetPtr newPacket = handle.newPacket();
-            gettimeofday(&tv, nullptr);
-            newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-			int cnt = sendto(sock, newPacket->data, newPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
 
-			// packetExam(newPacket->data, cnt);
-        }
 
         FD_ZERO (&read_set);				// file descriptor receive
         FD_ZERO (&write_set);				// file descriptor send out
