@@ -44,6 +44,7 @@ private:
 	packet *slideWindow;					// sliding window
 	
 	bool startSending;						// whether start sending
+	bool headerAck;                         // where header ack received
 	bool finishSending;						// whether finish sending
 	short seqFirst;							// first seq Number of packet not sent successfully
 	short seqNext;							// next packet to be sent

@@ -17,6 +17,7 @@
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <sys/stat.h>
 
 // slide window
 const int WINDOW_SIZE = 8;

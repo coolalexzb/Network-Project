@@ -14,6 +14,7 @@ void PacketSendHandler::init() {
 	seqFirst = 0;
 	seqNext = 0;
 	startSending = false;
+	headerAck = false;
 	finishSending = false;
 
 	// init file
@@ -33,7 +34,10 @@ void PacketSendHandler::updateSeqInfo(short ackSeq) {
 }
 
 PacketSendHandler::PacketSendHandler(char* filePath) {
+
     file = open(filePath, O_FSYNC | O_RDWR | O_CREAT, 0777);
+    printf("filePath: %s\n", filePath);
+
     if (file < 0) {
         printf("File open failed!\n");
         return;
@@ -56,6 +60,10 @@ PacketSendHandler::~PacketSendHandler() {
 
 packetPtr PacketSendHandler::newPacket()
 {
+    if(startSending && !headerAck) {
+        return nullptr;
+    }
+
 	packetPtr thisPacket = &slideWindow[seqNext % WINDOW_SIZE];
 	*(short *)(thisPacket->data + PACKET_HEADER_POS) = (short)htons(seqNext);
 
@@ -128,6 +136,7 @@ void PacketSendHandler::recv_ack(short ackSeq) {
 		}
 		else {
 			if (ackSeq == 0) {
+			    headerAck = true;
 				printf("[recv ack] packect#%05hd ACCEPTED\tHeader packet RECEIVED\n", ackSeq);
 			}
 			else {

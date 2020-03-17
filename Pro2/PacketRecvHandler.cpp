@@ -13,15 +13,40 @@ short PacketRecvHandler::getNextSeq() {
 
 }
 
+void PacketRecvHandler::mkDir(char *dir) {
+    for(char *pos = dir; *pos; pos++) {
+        if(*pos == '/') {
+            *pos = '\0';
+            mkdir(dir, S_IRWXU);
+            *pos = '/';
+        }
+    }
+    mkdir(dir, S_IRWXU);
+}
+
 short PacketRecvHandler::recvPacket(char * packet, int length) {
     if (!startSending) {
-		
+        filePath = packet + PACKET_FILEPATH_POS;
+
+        char *last = strrchr(filePath, '/');
+        if (last != NULL) {
+            printf("Last token: '%s'\n", last+1);
+        }
+        int len = strlen(filePath) - strlen(last);
+        printf("len: %d\n", len);
+        char* subdir;
+        subdir = (char *)malloc(len + 1);
+        strncpy(subdir, filePath, len);
+        printf("subdir: %s\n", subdir);
+        mkDir(subdir);
+
 		// header
         packetSize = (short)ntohs(*(short *)(packet + PACKET_PACKETNUM_POS));
         slideWindow[0].isRecv = true;
         
-		filePath = packet + PACKET_FILEPATH_POS;
+
         file = open(filePath, O_RDWR | O_CREAT, 0777);
+        printf("filePath: %s\n", filePath);
         if (file < 0) {
             printf("File open failed!\n");
         }
@@ -31,9 +56,9 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
     }
 	else {
 		short seqNum = (short)ntohs(*(short *)(packet + PACKET_HEADER_POS));
-        printf("seqNum: %d\n", seqNum);
-        printf("seqOldest: %d\n", seqOldest);
-        printf("seqNext: %d\n", seqNext);
+//        printf("seqNum: %d\n", seqNum);
+//        printf("seqOldest: %d\n", seqOldest);
+//        printf("seqNext: %d\n", seqNext);
         if (slideWindow[seqNum % WINDOW_SIZE].isRecv) {
             //printf("enter into seqNum: %d\n", seqNum);
             return updateSeq(seqNum);
@@ -61,7 +86,7 @@ short PacketRecvHandler::updateSeq(short seqNum) {
             }
             slideWindow[index].isRecv = false;
 			//memset(slideWindow[seqNum % WINDOW_SIZE].data, 0, PACKET_DATA_LENGTH);
-            memset(slideWindow[index % WINDOW_SIZE].data, 0, PACKET_DATA_LENGTH);
+            memset(slideWindow[index].data, 0, PACKET_DATA_LENGTH);
         }
 		else {
             break;

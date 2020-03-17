@@ -94,7 +94,6 @@ int main(int argc, char **argv) {
 
 				int recvLen = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
 				//packetExam(buf, recvLen);
-                //short seqNum = (short)ntohs(*(short *)(buf + PACKET_HEADER_POS));
                 short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
 				if (checksum(ckSum, buf, recvLen)) {
                     short ackSeqNum = packetHandler.recvPacket(buf, recvLen);

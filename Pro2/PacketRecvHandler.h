@@ -49,6 +49,7 @@ private:
 	int file;
 	void init();
 	void wrote(Packet packet);
+    void mkDir(char *dir);
 };
 
 #endif

@@ -18,13 +18,15 @@ int main(int argc, char **argv) {
 
     char *recv_host = strtok(argv[2], ":");
     unsigned short recv_port = atoi(strtok(NULL, ":"));
-    char *subdir = strtok(argv[4], "/");
-    char *filename = strtok(NULL, "/");
+    char* filePath = argv[4];
+    printf("filePath: %s\n", filePath);
+//    char *subdir = strtok(argv[4], "/");
+//    char *filename = strtok(NULL, "/");
 
     printf("recv_host: %s\n", recv_host);
     printf("recv_port: %d\n", recv_port);
-    printf("subdir: %s\n", subdir);
-    printf("filename: %s\n", filename);
+//    printf("subdir: %s\n", subdir);
+//    printf("filename: %s\n", filename);
 	printf("Sending start:\n");
 
     /* server socket address variables */
@@ -68,7 +70,7 @@ int main(int argc, char **argv) {
     buf = (char *) malloc(BUF_LEN);
     recBuff = (char *) malloc(BUF_LEN);
 
-    PacketSendHandler handle(filename);
+    PacketSendHandler handle(filePath);
 
     /* bind server socket to the address */
     if (bind(sock, (struct sockaddr *) &sin, sizeof(sin)) < 0) {     // bind server ip port to socket
@@ -79,7 +81,6 @@ int main(int argc, char **argv) {
     timeval tv;
     gettimeofday(&tv, nullptr);
     time_t startTime = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-    time_t checkTimeout = startTime;
     while (1) {
         // check timeout packet
         gettimeofday(&tv, nullptr);
@@ -87,8 +88,9 @@ int main(int argc, char **argv) {
         packetPtr resendPacket = handle.getUnAckPacket(currTime);
         if(resendPacket == nullptr) {
             // send more packets
-            if (!handle.isWindowFull() && handle.isOver() == false) {
-                packetPtr newPacket = handle.newPacket();
+            packetPtr newPacket = handle.newPacket();
+            if (newPacket != nullptr && !handle.isWindowFull() && handle.isOver() == false) {
+                //packetPtr newPacket = handle.newPacket();
                 gettimeofday(&tv, nullptr);
                 newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
                 int cnt = sendto(sock, newPacket->data, newPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
@@ -99,7 +101,6 @@ int main(int argc, char **argv) {
             gettimeofday(&tv, nullptr);
             resendPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
             int cnt = sendto(sock, resendPacket->data, resendPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
-            //checkTimeout = currTime;
         }
 
 
@@ -145,6 +146,7 @@ int main(int argc, char **argv) {
 
     gettimeofday(&tv, nullptr);
     time_t endTime = tv.tv_usec / 1000 + tv.tv_sec * 1000;
+    printf("Time used: %ld\n", endTime - startTime);
 
     return 0;
 }
