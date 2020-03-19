@@ -21,7 +21,7 @@
 
 // slide window
 const int WINDOW_SIZE = 8;
-const int PACKET_DATA_LENGTH = 1018;
+const int PACKET_DATA_LENGTH = 8186;
 const int PACKET_TIMEOUT_TIME = 10;
 const int ACK_PACKET_LENGTH = 8;
 

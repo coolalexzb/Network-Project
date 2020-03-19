@@ -16,6 +16,7 @@ void PacketSendHandler::init() {
 	startSending = false;
 	headerAck = false;
 	finishSending = false;
+    finishAll = false;
 
 	// init file
 	fileLen = lseek(file, sendingPos, SEEK_END);
@@ -141,7 +142,10 @@ void PacketSendHandler::recv_ack(short ackSeq) {
 			}
 			else {
 				long sendingOffset = ackSeq * PACKET_DATA_LENGTH;
-				if (sendingOffset > fileLen) sendingOffset = fileLen;
+				if (sendingOffset > fileLen) {
+				    sendingOffset = fileLen;
+                    finishAll = true;
+				}
 				printf("[recv ack] packect#%05hd ACCEPTED\t%07ld bytes RECEIVED\n", ackSeq, sendingOffset);
 			}
 			updateSeqInfo(ackSeq);
@@ -156,6 +160,14 @@ bool PacketSendHandler::isWindowFull() {
 	return seqNext - seqFirst == WINDOW_SIZE;
 }
 
-bool PacketSendHandler::isOver() {
-	return finishSending;
+//bool PacketSendHandler::isOver() {
+//	return finishSending;
+//}
+
+bool PacketSendHandler::isSendingOver() {
+    return finishSending;
+}
+
+bool PacketSendHandler::isAllOver() {
+    return finishAll;
 }

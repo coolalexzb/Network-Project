@@ -37,7 +37,9 @@ public:
 	packetPtr getUnAckPacket(time_t curTime);
 	void recv_ack(short ackSeq);
 	bool isWindowFull();
-	bool isOver();
+//	bool isOver();
+    bool isSendingOver();
+    bool isAllOver();
 
 private:
 
@@ -46,6 +48,7 @@ private:
 	bool startSending;						// whether start sending
 	bool headerAck;                         // where header ack received
 	bool finishSending;						// whether finish sending
+    bool finishAll;							// whether finish all
 	short seqFirst;							// first seq Number of packet not sent successfully
 	short seqNext;							// next packet to be sent
 

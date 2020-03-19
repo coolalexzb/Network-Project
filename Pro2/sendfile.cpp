@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
         if(resendPacket == nullptr) {
             // send more packets
             packetPtr newPacket = handle.newPacket();
-            if (newPacket != nullptr && !handle.isWindowFull() && handle.isOver() == false) {
+            if (newPacket != nullptr && !handle.isWindowFull() && handle.isSendingOver() == false) {
                 //packetPtr newPacket = handle.newPacket();
                 gettimeofday(&tv, nullptr);
                 newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
@@ -136,7 +136,7 @@ int main(int argc, char **argv) {
                 } else {
                     cout << "Wrong ack packet" << endl;
                 }
-                if(handle.isOver()) {
+                if(handle.isAllOver()) {
                     cout << "Sending over" << endl;
                     break;
                 }

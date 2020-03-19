@@ -45,7 +45,7 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
         slideWindow[0].isRecv = true;
         
 
-        file = open(filePath, O_RDWR | O_CREAT, 0777);
+        file = open(filePath, O_WRONLY | O_CREAT, 0777);
         printf("filePath: %s\n", filePath);
         if (file < 0) {
             printf("File open failed!\n");
@@ -119,10 +119,10 @@ void PacketRecvHandler::wrote(Packet packet) {
     lseek(file, (packetCnt - 1) * PACKET_DATA_LENGTH, SEEK_SET);
     //printf("data: %s\n", packet.data);
     if (isOver()) {
-        write(file, packet.data, sizeof(packet.data));
+        write(file, packet.data, strlen(packet.data));
     }
 	else {
-        write(file, packet.data, sizeof(packet.data));
+        write(file, packet.data, strlen(packet.data));
     }
 
 }
