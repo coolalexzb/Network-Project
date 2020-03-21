@@ -74,7 +74,7 @@ int main(int argc, char **argv) {
 
         FD_SET (sock, &read_set); /* put the listening socket in */
 
-        time_out.tv_usec = 100000; /* 1-tenth of a second timeout */
+        time_out.tv_usec = 10000; /* 1-tenth of a second timeout */
         time_out.tv_sec = 0;
 
         /* invoke select, make sure to pass sock+1 !!! */
@@ -93,13 +93,16 @@ int main(int argc, char **argv) {
             if (FD_ISSET(sock, &read_set)) {			/* check the server socket */
 
 				int recvLen = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
+				if(recvLen != PACKET_DATA_LENGTH + 6) {
+				    printf("recvLen: %d\n", recvLen);
+				}
 				//packetExam(buf, recvLen);
                 short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
 				if (checksum(ckSum, buf, recvLen)) {
                     short ackSeqNum = packetHandler.recvPacket(buf, recvLen);
                     generateAck(ackSeqNum, sendbuf, packetHandler.isOver());
                     int num = sendto(sock, sendbuf, ACK_PACKET_LENGTH, 0, (sockaddr *) &addr, sizeof(addr));
-                    printf("ackSeqNum: %d\n", ackSeqNum);
+                    //printf("ackSeqNum: %d\n", ackSeqNum);
                 } 
 				else {
                     printf("recv failed\n");

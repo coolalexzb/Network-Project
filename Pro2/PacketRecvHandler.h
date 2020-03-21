@@ -48,8 +48,9 @@ private:
 
 	int file;
 	void init();
-	void wrote(Packet packet);
+	void wrote(Packet packet, short seqNum);
     void mkDir(char *dir);
+    bool *is_write;
 };
 
 #endif

@@ -88,13 +88,14 @@ int main(int argc, char **argv) {
         packetPtr resendPacket = handle.getUnAckPacket(currTime);
         if(resendPacket == nullptr) {
             // send more packets
-            packetPtr newPacket = handle.newPacket();
-            if (newPacket != nullptr && !handle.isWindowFull() && handle.isSendingOver() == false) {
-                //packetPtr newPacket = handle.newPacket();
-                gettimeofday(&tv, nullptr);
-                newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
-                int cnt = sendto(sock, newPacket->data, newPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
 
+            if (!handle.isWindowFull() && handle.isSendingOver() == false) {
+                packetPtr newPacket = handle.newPacket();
+                if(newPacket != nullptr) {
+                    gettimeofday(&tv, nullptr);
+                    newPacket->time = tv.tv_usec / 1000 + tv.tv_sec * 1000;
+                    int cnt = sendto(sock, newPacket->data, newPacket->len, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
+                }
                 //packetExam(newPacket->data, cnt);
             }
         }else {
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
 
         FD_SET (sock, &read_set); /* put the listening socket in */
 
-        time_out.tv_usec = 100000; /* 1-tenth of a second timeout */
+        time_out.tv_usec = 10000; /* 1-tenth of a second timeout */
         time_out.tv_sec = 0;
 
         /* invoke select, make sure to pass max+1 !!! */

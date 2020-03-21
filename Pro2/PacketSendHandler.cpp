@@ -19,8 +19,8 @@ void PacketSendHandler::init() {
     finishAll = false;
 
 	// init file
+    sendingPos = 0;
 	fileLen = lseek(file, sendingPos, SEEK_END);
-	sendingPos = 0;
 }
 
 bool PacketSendHandler::isInWindow(short ackSeq) {
@@ -160,9 +160,9 @@ bool PacketSendHandler::isWindowFull() {
 	return seqNext - seqFirst == WINDOW_SIZE;
 }
 
-//bool PacketSendHandler::isOver() {
-//	return finishSending;
-//}
+bool PacketSendHandler::isOver() {
+	return finishSending;
+}
 
 bool PacketSendHandler::isSendingOver() {
     return finishSending;

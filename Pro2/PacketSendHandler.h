@@ -37,7 +37,7 @@ public:
 	packetPtr getUnAckPacket(time_t curTime);
 	void recv_ack(short ackSeq);
 	bool isWindowFull();
-//	bool isOver();
+	bool isOver();
     bool isSendingOver();
     bool isAllOver();
 
