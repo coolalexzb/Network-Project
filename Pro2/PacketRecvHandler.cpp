@@ -57,11 +57,10 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
     }
 	else {
 		short seqNum = (short)ntohs(*(short *)(packet + PACKET_HEADER_POS));
-//        printf("seqNum: %d\n", seqNum);
-//        printf("seqOldest: %d\n", seqOldest);
-//        printf("seqNext: %d\n", seqNext);
+		if(seqNum < seqOldest) {
+		    return seqOldest - 1;
+		}
         if (slideWindow[seqNum % WINDOW_SIZE].isRecv) {
-            //printf("enter into seqNum: %d\n", seqNum);
             return updateSeq(seqNum);
         }
 		else {
@@ -69,7 +68,6 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
             memcpy(slideWindow[seqNum % WINDOW_SIZE].data, packet + PACKET_DATA_POS, dateLen);
             slideWindow[seqNum % WINDOW_SIZE].isRecv = true;
             slideWindow[seqNum % WINDOW_SIZE].seq = seqNum;
-            //packetCnt++;
             
 			wrote(slideWindow[seqNum % WINDOW_SIZE], seqNum);
 			if (seqNum >= seqNext) seqNext = seqNum + 1;
@@ -82,11 +80,11 @@ short PacketRecvHandler::updateSeq(short seqNum) {
     for (short i = seqOldest; i <= seqNext; i++) {
 		short index = i % WINDOW_SIZE;
         if (slideWindow[index].isRecv) {
-            if(seqOldest < seqNext) {
-                seqOldest++;
-            }
+//            if(seqOldest < seqNext) {
+//                seqOldest++;
+//            }
+            seqOldest++;
             slideWindow[index].isRecv = false;
-			//memset(slideWindow[seqNum % WINDOW_SIZE].data, 0, PACKET_DATA_LENGTH);
             memset(slideWindow[index].data, 0, PACKET_DATA_LENGTH);
         }
 		else {
@@ -121,11 +119,8 @@ void PacketRecvHandler::wrote(Packet packet, short seqNum) {
         return;
     }
     lseek(file, (seqNum - 1) * PACKET_DATA_LENGTH, SEEK_SET);
-    //printf("data: %s\n", packet.data);
-    //printf("len: %d\n", strlen(packet.data));
-//    if(strlen(packet.data) != PACKET_DATA_LENGTH) {
-//        printf("strlen(packet.data): %d\n", strlen(packet.data));
-//    }
+    packetCnt++;
+    printf("packetCnt %d\n", packetCnt);
     write(file, packet.data, strlen(packet.data));
     is_write[seqNum - 1] = true;
 
