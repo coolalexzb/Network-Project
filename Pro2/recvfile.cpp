@@ -89,6 +89,11 @@ int main(int argc, char **argv) {
             if (FD_ISSET(sock, &read_set)) {		/* check the server socket */
 
 				int recvLen = (int) recvfrom(sock, buf, BUF_LEN, 0, (sockaddr *) &addr, &addr_len);
+
+				if (recvLen == 4) {
+					printf("[ Completed ]\n");
+					exit(0);
+				}
 				
 				short ckSum = (short) ntohs(*(short *)(buf + PACKET_CHECKSUM_POS));
 				if (checksum(ckSum, buf, recvLen)) {
@@ -104,6 +109,4 @@ int main(int argc, char **argv) {
             }
         }
     }
-
-	exit(0);
 }

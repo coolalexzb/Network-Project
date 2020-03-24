@@ -129,6 +129,13 @@ int main(int argc, char **argv) {
 
                 if (handle.isAllOver()) {
                     cout << "[ Completed ] Sending finished!" << endl;
+					int count = 0;
+					while (count < 20) {
+						count++;
+						char* fin = (char *)malloc(4);
+						strcpy(fin, "fin");
+						sendto(sock, fin, 4, 0, (struct sockaddr *) &sout, sizeof(sockaddr));
+					}
                     break;
                 }
             }
