@@ -21,8 +21,8 @@ struct packet {
     char* data;
     short len;
     short seq;
+	bool isAck;
     time_t time;
-    bool isAck;
 };
 
 typedef struct packet *packetPtr;
@@ -37,7 +37,6 @@ public:
 	packetPtr getUnAckPacket(time_t curTime);
 	void recv_ack(short ackSeq);
 	bool isWindowFull();
-	bool isOver();
     bool isSendingOver();
     bool isAllOver();
 

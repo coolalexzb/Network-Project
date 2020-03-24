@@ -9,13 +9,9 @@ bool PacketRecvHandler::isOver() {
     return packetSize == packetCnt;
 }
 
-short PacketRecvHandler::getNextSeq() {
-
-}
-
 void PacketRecvHandler::mkDir(char *dir) {
-    for(char *pos = dir; *pos; pos++) {
-        if(*pos == '/') {
+    for (char *pos = dir; *pos; pos++) {
+        if (*pos == '/') {
             *pos = '\0';
             mkdir(dir, S_IRWXU);
             *pos = '/';
@@ -26,18 +22,19 @@ void PacketRecvHandler::mkDir(char *dir) {
 
 short PacketRecvHandler::recvPacket(char * packet, int length) {
     if (!startSending) {
-        filePath = packet + PACKET_FILEPATH_POS;
+		char* sendingPath = packet + PACKET_FILEPATH_POS;
+		int sendingPathLen = strlen(sendingPath);
+		
+		char* filePath = (char *)malloc(sendingPathLen + 6);
+		strcpy(filePath, sendingPath);
+		strcpy(filePath + sendingPathLen, ".recv");
 
         char *last = strrchr(filePath, '/');
-        if (last != NULL) {
-            printf("Last token: '%s'\n", last+1);
-        }
-        int len = strlen(filePath) - strlen(last);
-        printf("len: %d\n", len);
+		int dirLen = strlen(filePath) - strlen(last);
+
         char* subdir;
-        subdir = (char *)malloc(len + 1);
-        strncpy(subdir, filePath, len);
-        printf("subdir: %s\n", subdir);
+        subdir = (char *)malloc(dirLen + 1);
+        strncpy(subdir, filePath, dirLen);
         mkDir(subdir);
 
 		// header
@@ -45,7 +42,6 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
         is_write = new bool[packetSize + 1];
         slideWindow[0].isRecv = true;
         
-
         file = open(filePath, O_WRONLY | O_CREAT, 0777);
         printf("filePath: %s\n", filePath);
         if (file < 0) {
@@ -53,26 +49,35 @@ short PacketRecvHandler::recvPacket(char * packet, int length) {
         }
         
 		startSending = true;
+		printf("[recv data] packect#%04hd  Header  ACCEPTED(In-ord)\n", 0);
 		return 0;
     }
 	else {
 		short seqNum = (short)ntohs(*(short *)(packet + PACKET_HEADER_POS));
-		if(seqNum < seqOldest) {
+		if (seqNum == 0) {
+			printf("[recv data] packect#%04hd  Header  IGNORED\n", seqNum);
+			return 0;
+		}
+
+		short dataLen = (short)ntohs(*(short *)(packet + PACKET_DATALEN_POS));
+		if (seqNum < seqOldest) {
+			printf("[recv data] packect#%04hd  Start:%08ld bytes  Length:%hd  ACCEPTED(Out-ord)\n", seqNum, (seqNum - 1) * PACKET_DATA_LENGTH, dataLen);
 		    return seqOldest - 1;
 		}
         if (slideWindow[seqNum % WINDOW_SIZE].isRecv) {
-            return updateSeq(seqNum);
+			printf("[recv data] packect#%04hd  Start:%08ld bytes  Length:%hd  IGNORED\n", seqNum, (seqNum - 1) * PACKET_DATA_LENGTH, dataLen);
+			return seqOldest - 1;
         }
-		else {
-            short dateLen = (short)ntohs(*(short *)(packet + PACKET_DATALEN_POS));
-            memcpy(slideWindow[seqNum % WINDOW_SIZE].data, packet + PACKET_DATA_POS, dateLen);
-            slideWindow[seqNum % WINDOW_SIZE].isRecv = true;
-            slideWindow[seqNum % WINDOW_SIZE].seq = seqNum;
+		
+		short index = seqNum % WINDOW_SIZE;
+		memcpy(slideWindow[index].data, packet + PACKET_DATA_POS, dataLen);
+		slideWindow[index].isRecv = true;
+		slideWindow[index].seq = seqNum;
             
-			wrote(slideWindow[seqNum % WINDOW_SIZE], seqNum);
-			if (seqNum >= seqNext) seqNext = seqNum + 1;
-            return updateSeq(seqNum);
-        }
+		wrote(slideWindow[index], seqNum);
+		if (seqNum >= seqNext) seqNext = seqNum + 1;
+		printf("[recv data] packect#%04hd  Start:%08ld bytes  Length:%hd  ACCEPTED(In-ord)\n", seqNum, (seqNum - 1) * PACKET_DATA_LENGTH, dataLen);
+		return updateSeq(seqNum);
     }
 }
 
@@ -80,23 +85,17 @@ short PacketRecvHandler::updateSeq(short seqNum) {
     for (short i = seqOldest; i <= seqNext; i++) {
 		short index = i % WINDOW_SIZE;
         if (slideWindow[index].isRecv) {
-//            if(seqOldest < seqNext) {
-//                seqOldest++;
-//            }
             seqOldest++;
             slideWindow[index].isRecv = false;
             memset(slideWindow[index].data, 0, PACKET_DATA_LENGTH);
-        }
-		else {
-            break;
-        }
+			continue;
+		}
+		break;
     }
-
     return seqOldest - 1;
 }
 
 void PacketRecvHandler::init() {
-    filePath = (char *)"./output";
     slideWindow = new Packet[WINDOW_SIZE];
     for (int i = 0; i < WINDOW_SIZE; i++) {
         slideWindow[i].data = new char[PACKET_DATA_LENGTH];
@@ -115,15 +114,12 @@ int PacketRecvHandler::getPacketSize(){
 }
 
 void PacketRecvHandler::wrote(Packet packet, short seqNum) {
-    if(is_write[seqNum - 1]) {
-        return;
-    }
+    if (is_write[seqNum - 1]) return;
+
     lseek(file, (seqNum - 1) * PACKET_DATA_LENGTH, SEEK_SET);
-    packetCnt++;
-    printf("packetCnt %d\n", packetCnt);
     write(file, packet.data, strlen(packet.data));
     is_write[seqNum - 1] = true;
-
+	packetCnt++;
 }
 
 PacketRecvHandler::~PacketRecvHandler() {

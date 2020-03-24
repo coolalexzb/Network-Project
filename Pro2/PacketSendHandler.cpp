@@ -35,10 +35,7 @@ void PacketSendHandler::updateSeqInfo(short ackSeq) {
 }
 
 PacketSendHandler::PacketSendHandler(char* filePath) {
-
     file = open(filePath, O_FSYNC | O_RDWR | O_CREAT, 0777);
-    printf("filePath: %s\n", filePath);
-
     if (file < 0) {
         printf("File open failed!\n");
         return;
@@ -59,11 +56,8 @@ PacketSendHandler::~PacketSendHandler() {
 	delete[] slideWindow;
 }
 
-packetPtr PacketSendHandler::newPacket()
-{
-    if(startSending && !headerAck) {
-        return nullptr;
-    }
+packetPtr PacketSendHandler::newPacket() {
+    if (startSending && !headerAck) return nullptr;
 
 	packetPtr thisPacket = &slideWindow[seqNext % WINDOW_SIZE];
 	*(short *)(thisPacket->data + PACKET_HEADER_POS) = (short)htons(seqNext);
@@ -71,6 +65,8 @@ packetPtr PacketSendHandler::newPacket()
 	if (!startSending) {
 
 		// for first packet, send filePath and fileLen
+		printf("[ send data ] packect#%04hd   Header packet\n", seqNext);
+
 		short packetNum = fileLen / PACKET_DATA_LENGTH;
 		if (fileLen % PACKET_DATA_LENGTH != 0) packetNum++;
 		*(short *)(thisPacket->data + PACKET_PACKETNUM_POS) = (short)htons(packetNum);
@@ -88,6 +84,8 @@ packetPtr PacketSendHandler::newPacket()
 		if (lenToSend <= PACKET_DATA_LENGTH) {
 			
 			// the last packet
+			printf("[ send data ] packect#%04hd   Start:%08ld bytes   Length:%ld\n", seqNext, sendingPos, lenToSend);
+
 			*(short *)(thisPacket->data + PACKET_DATALEN_POS) = (short)htons(lenToSend);
 			lseek(file, sendingPos, SEEK_SET);
 			read(file, thisPacket->data + PACKET_DATA_POS, lenToSend);
@@ -99,6 +97,8 @@ packetPtr PacketSendHandler::newPacket()
 		else {
 
 			// common packet
+			printf("[ send data ] packect#%04hd   Start:%08ld bytes   Length:%hd\n", seqNext, sendingPos, PACKET_DATA_LENGTH);
+
 			*(short *)(thisPacket->data + PACKET_DATALEN_POS) = (short)htons(PACKET_DATA_LENGTH);
 			lseek(file, sendingPos, SEEK_SET);
 			read(file, thisPacket->data + PACKET_DATA_POS, PACKET_DATA_LENGTH);
@@ -120,8 +120,20 @@ packetPtr PacketSendHandler::newPacket()
 packetPtr PacketSendHandler::getUnAckPacket(time_t curTime) {	
 	short seqFirst_copy = seqFirst;
 	while (seqFirst_copy < seqNext) {
-		packetPtr tmp = &slideWindow[seqFirst_copy++ % WINDOW_SIZE];
-		if (!tmp->isAck && (curTime - tmp->time) > PACKET_TIMEOUT_TIME) return tmp;
+		packetPtr tmp = &slideWindow[seqFirst_copy % WINDOW_SIZE];
+		if (!tmp->isAck && (curTime - tmp->time) * 1000 > PACKET_TIMEOUT_TIME) {
+			if (seqFirst_copy == 0) {
+				// resend header
+				printf("[ resending ] packect#%04hd   Header packet\n", seqFirst_copy);
+			}
+			else {
+				// resend commom packet
+				printf("[ resending ] packect#%04hd   Start:%08ld bytes   Length:%hd\n", seqFirst_copy, (seqFirst_copy - 1) * (long)PACKET_DATA_LENGTH, tmp->len - PACKET_DATA_POS);
+			}
+			return tmp;
+		}
+
+		seqFirst_copy++;
 	}
 	
 	return nullptr;
@@ -131,37 +143,28 @@ void PacketSendHandler::recv_ack(short ackSeq) {
 	if (isInWindow(ackSeq)) {
 		packetPtr thisPacket = &slideWindow[ackSeq % WINDOW_SIZE];
 
-		// duplication check
-		if (thisPacket->isAck) {
-			printf("[recv ack] packect#%hd DUPLICATED\n", ackSeq);
-		}
-		else {
+		if (!thisPacket->isAck) {
 			if (ackSeq == 0) {
+				// header
 			    headerAck = true;
-				printf("[recv ack] packect#%05hd ACCEPTED\tHeader packet RECEIVED\n", ackSeq);
+				printf("[ recv ack# ] packect#%04hd   Header packet RECEIVED\n", ackSeq);
 			}
 			else {
+				// common packet
 				long sendingOffset = ackSeq * PACKET_DATA_LENGTH;
 				if (sendingOffset > fileLen) {
 				    sendingOffset = fileLen;
                     finishAll = true;
 				}
-				printf("[recv ack] packect#%05hd ACCEPTED\t%07ld bytes RECEIVED\n", ackSeq, sendingOffset);
+				printf("[ recv ack# ] packect#%04hd   End:  %08ld bytes\n", ackSeq, sendingOffset);
 			}
 			updateSeqInfo(ackSeq);
 		}
-	}
-	else {
-		printf("[recv ack] packect#%hd IGNORED\n", ackSeq);
 	}
 }
 
 bool PacketSendHandler::isWindowFull() {
 	return seqNext - seqFirst == WINDOW_SIZE;
-}
-
-bool PacketSendHandler::isOver() {
-	return finishSending;
 }
 
 bool PacketSendHandler::isSendingOver() {

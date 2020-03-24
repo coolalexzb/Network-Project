@@ -29,7 +29,6 @@ public:
 	~PacketRecvHandler();
 
 	bool isOver();
-	short getNextSeq();
 	short recvPacket(char *packet, int length);
 	short updateSeq(short seqNum);
 	int getPacketSize();
@@ -37,20 +36,21 @@ public:
 private:
 
     Packet *slideWindow;						// sliding window
-
-	bool startSending;							// whether start sending
 	
+	bool startSending;							// whether start sending
+	bool *is_write;
+
 	short seqOldest;							// oldest seq Number of packet not sent successfully
 	short seqNext;								// latest packet received
 	short packetSize;
 	short packetCnt;
-    char* filePath;
-
+    
 	int file;
+	char* filePath;
+	
 	void init();
 	void wrote(Packet packet, short seqNum);
     void mkDir(char *dir);
-    bool *is_write;
 };
 
 #endif
