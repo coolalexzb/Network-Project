@@ -23,7 +23,7 @@
 const int WINDOW_SIZE = 8;
 const int PACKET_DATA_LENGTH = 8186;
 const int PACKET_TIMEOUT_TIME = 1000;
-const int ACK_PACKET_LENGTH = 8;
+const int ACK_PACKET_LENGTH = 4;
 
 // packet positions
 const int PACKET_HEADER_POS = 0;
